@@ -379,32 +379,59 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const issue = await read($, issueAtom)
     const error = await read($, errorAtom)
+    const width = e.props.bodyColumns
     const clashing = new Set(
       repo ? conflicts({ checkout: repo.root, issue: source?.id ?? null }, others).map(c => c.sessionId) : [],
     )
-    const othersRow = others.length > 0 && (
+
+    const rule = (
       <Box>
-        <Text dimColor>also: </Text>
-        {others.map((o, i) => (
-          <Text key={o.sessionId} color={clashing.has(o.sessionId) ? 'red' : undefined} dimColor={!clashing.has(o.sessionId)} wrap="truncate">
-            {i > 0 ? ' · ' : ''}
-            {clashing.has(o.sessionId) ? '⚠ ' : ''}
-            {o.issue ?? 'no issue'}
-            {o.state ? ` ${o.state}` : ''} ({o.label})
-          </Text>
-        ))}
+        <Text dimColor>── </Text>
+        <Text bold dimColor>Linear</Text>
+        <Text dimColor wrap="truncate"> {'─'.repeat(Math.max(0, width - 10))}</Text>
+      </Box>
+    )
+    const sessionsRow = others.length > 0 && (
+      <Box>
+        <Text dimColor>  sessions  </Text>
+        {others.map((o, i) => {
+          const clash = clashing.has(o.sessionId)
+          const text = o.issue ? `${o.issue}${o.state ? ` ${o.state}` : ''} (${o.label})` : `${o.label}: no issue`
+          return (
+            <Text key={o.sessionId} color={clash ? 'red' : undefined} dimColor={!clash} wrap="truncate">
+              {i > 0 ? '  ·  ' : ''}
+              {clash ? '⚠  ' : ''}
+              {text}
+            </Text>
+          )
+        })}
+      </Box>
+    )
+    const buttons = (
+      <Box>
+        <Button key="details" label="Details" plain onPress={() => $.ui.open({ id: PANE, title: 'Linear' })} />
+        <Text>  </Text>
+        <Button key="hide" label="Hide" plain onPress={() => update($, hiddenAtom, () => true)} />
       </Box>
     )
 
-    if (!source) return <Box flexDirection="column" width={e.props.bodyColumns}>{othersRow}</Box>
+    if (!source) {
+      return (
+        <Box flexDirection="column" width={width} marginTop={1}>
+          {rule}
+          {sessionsRow}
+        </Box>
+      )
+    }
 
     if (!issue || issue.identifier !== source.id) {
       return (
-        <Box flexDirection="column" width={e.props.bodyColumns}>
+        <Box flexDirection="column" width={width} marginTop={1}>
+          {rule}
           <Text dimColor wrap="truncate">
-            ◆ {source.id} · {error ?? 'loading…'}
+            ◆ {source.id}  {error ?? 'loading…'}
           </Text>
-          {othersRow}
+          {sessionsRow}
         </Box>
       )
     }
@@ -419,20 +446,20 @@ export const register: Register = (on, options) => {
     ].filter(Boolean)
 
     return (
-      <Box flexDirection="column" width={e.props.bodyColumns}>
+      <Box flexDirection="column" width={width} marginTop={1}>
+        {rule}
         <Box>
-          <Text bold>◆ {issue.identifier} </Text>
+          <Text bold color={stateColor(issue.stateType)}>◆ </Text>
+          <Text bold>{issue.identifier}  </Text>
           <Text color={stateColor(issue.stateType)}>{issue.state}</Text>
-          <Text dimColor> · {issue.priority} · </Text>
-          <Text wrap="truncate">{issue.title}</Text>
+          <Text dimColor> · {issue.priority}</Text>
         </Box>
-        <Box>
-          <Text dimColor wrap="truncate">{meta.join(' · ')} </Text>
-          <Button key="details" label="Details" plain onPress={() => $.ui.open({ id: PANE, title: 'Linear' })} />
-          <Text> </Text>
-          <Button key="hide" label="Hide" plain onPress={() => update($, hiddenAtom, () => true)} />
+        <Text wrap="truncate">  {issue.title}</Text>
+        <Box justifyContent="space-between">
+          <Text dimColor wrap="truncate">  {meta.join(' · ')}</Text>
+          {buttons}
         </Box>
-        {othersRow}
+        {sessionsRow}
       </Box>
     )
   })
