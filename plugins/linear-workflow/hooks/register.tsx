@@ -470,24 +470,41 @@ export const register: Register = (on, options) => {
     const issue = await read($, issueAtom)
     const error = await read($, errorAtom)
     const others = await read($, othersAtom)
+    const width = e.props.bodyColumns
     const clashes = repo ? conflicts({ checkout: repo.root, issue: source?.id ?? null }, others) : []
+
+    const section = (title: string, count?: number) => (
+      <Box marginTop={1}>
+        <Text dimColor>── </Text>
+        <Text bold>{title}</Text>
+        {count !== undefined && <Text dimColor> {count}</Text>}
+        <Text dimColor wrap="truncate"> {'─'.repeat(Math.max(0, width))}</Text>
+      </Box>
+    )
+    const field = (label: string, value: string | null | undefined) =>
+      value ? (
+        <Box key={label}>
+          <Text dimColor>{label.padEnd(11)}</Text>
+          <Text wrap="truncate">{value}</Text>
+        </Box>
+      ) : null
     const othersSection = others.length > 0 && (
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Other sessions ({others.length})</Text>
+      <Box flexDirection="column">
+        {section('Other sessions', others.length)}
         {others.map(o => (
           <Box key={o.sessionId}>
-            <Text color={o.stateType ? stateColor(o.stateType) : undefined}>{(o.state ?? '—').padEnd(12)}</Text>
-            <Text wrap="truncate"> {o.issue ?? 'no issue'} {o.title ?? ''} </Text>
-            <Text dimColor>({o.label})</Text>
+            <Text color={o.stateType ? stateColor(o.stateType) : undefined}>{(o.state ?? '—').padEnd(13)}</Text>
+            <Text wrap="truncate">{o.issue ?? 'no issue'}  {o.title ?? ''}</Text>
+            <Text dimColor>  {o.label}</Text>
           </Box>
         ))}
-        {clashes.map(c => <Text key={c.key} color="red">⚠ {c.text}</Text>)}
+        {clashes.map(c => <Text key={c.key} color="red">⚠  {c.text}</Text>)}
       </Box>
     )
 
     if (!issue) {
       return (
-        <Box flexDirection="column">
+        <Box flexDirection="column" width={width}>
           <Text dimColor>{source ? `${source.id}: ${error ?? 'loading…'}` : 'No Linear issue on this branch. /linear ABC-123 pins one.'}</Text>
           {othersSection}
         </Box>
@@ -496,56 +513,59 @@ export const register: Register = (on, options) => {
 
     const siteKeys = repo?.sites.map(s => s.key) ?? []
     const scope = scopeSites(issue, siteKeys)
-    const facts = [
-      issue.priority,
-      issue.assignee,
-      issue.cycle !== null ? `cycle ${issue.cycle}` : null,
-      issue.milestone,
-    ].filter(Boolean)
+    const sourceText = source
+      ? source.from === 'pinned' ? source.detail : source.from === 'root' ? `branch ${source.detail}` : source.detail
+      : null
 
     return (
-      <Box flexDirection="column" width={e.props.bodyColumns}>
-        <Text bold>{issue.identifier} · {issue.title}</Text>
+      <Box flexDirection="column" width={width}>
         <Box>
+          <Text bold color={stateColor(issue.stateType)}>◆ </Text>
+          <Text bold>{issue.identifier}  </Text>
           <Text color={stateColor(issue.stateType)}>{issue.state}</Text>
-          <Text dimColor> · {facts.join(' · ')}</Text>
+          <Text dimColor> · {issue.priority}</Text>
         </Box>
-        <Link href={issue.url} label="Open in Linear" />
-        {issue.parent && <Text dimColor>Parent: {issue.parent.identifier} · {issue.parent.title}</Text>}
-        <Text dimColor>Labels: {issue.labels.join(', ') || '—'}</Text>
-        <Text dimColor>Scope: {scope.length ? scope.join(', ') : 'all sites'}</Text>
-        {source && <Text dimColor>Source: {source.from} · {source.detail}</Text>}
+        <Text bold>{issue.title}</Text>
+        <Box marginTop={1}>
+          <Button key="copy" label="Copy link" onPress={async () => {
+            const copied = await $.ui.copy({ text: issue.url })
+            $.ui.toast(copied.isCopied ? `Copied ${issue.url}` : issue.url)
+          }} />
+          <Text>  </Text>
+          <Button key="refresh" label="Refresh" hotkey="r" onPress={() => refresh($, true)} />
+        </Box>
         {error && <Text color="red">Refresh failed: {error}</Text>}
 
+        <Box flexDirection="column" marginTop={1}>
+          {field('Parent', issue.parent ? `${issue.parent.identifier} · ${issue.parent.title}` : null)}
+          {field('Assignee', issue.assignee)}
+          {field('Cycle', issue.cycle !== null ? String(issue.cycle) : null)}
+          {field('Milestone', issue.milestone)}
+          {field('Labels', issue.labels.join(', ') || null)}
+          {field('Scope', scope.length ? scope.join(', ') : 'all')}
+          {field('Source', sourceText)}
+        </Box>
+
         {issue.children.length > 0 && (
-          <Box flexDirection="column" marginTop={1}>
-            <Text bold>Sub-issues ({issue.children.length})</Text>
+          <Box flexDirection="column">
+            {section('Sub-issues', issue.children.length)}
             {issue.children.map(c => (
               <Box key={c.identifier}>
-                <Text color={stateColor(c.stateType)}>{c.state.padEnd(12)}</Text>
-                <Text wrap="truncate"> {c.identifier} {c.title}</Text>
+                <Text color={stateColor(c.stateType)}>{c.state.padEnd(13)}</Text>
+                <Text wrap="truncate">{c.identifier}  {c.title}</Text>
               </Box>
             ))}
           </Box>
         )}
 
-        {issue.links.length > 0 && (
-          <Box flexDirection="column" marginTop={1}>
-            <Text bold>Links</Text>
-            {issue.links.map(l => <Link key={l.url} href={l.url} label={l.title} />)}
-          </Box>
-        )}
-
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold>Description</Text>
-          <Markdown text={issue.description || '_No description._'} />
-        </Box>
+        {section('Description')}
+        <Markdown text={issue.description || '_No description._'} />
 
         {issue.comments.length > 0 && (
-          <Box flexDirection="column" marginTop={1}>
-            <Text bold>Latest comments</Text>
+          <Box flexDirection="column">
+            {section('Latest comments', issue.comments.length)}
             {issue.comments.map((c, i) => (
-              <Box key={`c${i}`} flexDirection="column" marginTop={1}>
+              <Box key={`c${i}`} flexDirection="column" marginTop={i > 0 ? 1 : 0}>
                 <Text dimColor>{c.author} · {c.createdAt}</Text>
                 <Markdown text={c.body} />
               </Box>
@@ -553,11 +573,11 @@ export const register: Register = (on, options) => {
           </Box>
         )}
 
-        {othersSection}
+        {section('Links')}
+        <Link href={issue.url} label="Open in Linear" />
+        {issue.links.map(l => <Link key={l.url} href={l.url} label={l.title} />)}
 
-        <Box marginTop={1}>
-          <Button key="refresh" label="Refresh" hotkey="r" onPress={() => refresh($, true)} />
-        </Box>
+        {othersSection}
       </Box>
     )
   })
