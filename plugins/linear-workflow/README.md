@@ -7,15 +7,19 @@ Linear stays up to date along the way, and the current issue is always shown abo
 
 ## Overview
 
-The plugin has three parts:
+The plugin has four parts:
 
 - **Skills (slash commands)** take an issue from the cycle to a merged PR:
   `issue-next` → `issue-start` → *(work)* → `issue-review` → `issue-ship`, plus `issue-plan-cycle`
   to fill the cycle.
-- **An agent**, `linear-manager`, does every Linear read and write, so issue payloads stay out of
-  your main conversation.
+- **A CLI** (`bin/linear-workflow.ts`) runs every step that needs no judgment: fetching and ranking
+  issues, status changes, cycle changes, PR checks. It's faster than an LLM and gives the same answer
+  every time. Claude keeps the parts that need judgment: reading the issue, writing the code, the
+  commit message, PR summary and comments.
+- **An agent**, `linear-manager`, creates and edits issues, and stands in for the CLI when it can't
+  reach Linear.
 - **A mod**: live code that shows the current issue above the prompt, lists your other Claude Code
-  sessions, and warns when two of them collide.
+  sessions, and warns when two of them collide. It shares its code with the CLI (`lib/`).
 
 Claude Code namespaces plugin skills and agents, so the full names are
 `/linear-workflow:issue-start` and `linear-workflow:linear-manager`. Type `/issue` and pick from
@@ -28,10 +32,11 @@ the menu.
 /plugin install linear-workflow@sarimarcus
 ```
 
-1. Connect Linear's MCP server (the Linear connector on claude.ai, or
-   `claude mcp add --transport http linear https://mcp.linear.app/mcp`).
-2. Give the mod a Linear API key: `export LINEAR_API_KEY=lin_api_…` in your shell profile, or add a
-   `LINEAR_API_KEY=` line to your repo's (git-ignored) `.env`.
+1. Set a Linear API key (Linear → Settings → Security & access): `export LINEAR_API_KEY=lin_api_…`
+   in your shell profile, or a `LINEAR_API_KEY=` line in your repo's git-ignored `.env`. The CLI and
+   the mod both use it.
+2. Optional: connect Linear's MCP server for the `linear-manager` agent (the Linear connector on
+   claude.ai, or `claude mcp add --transport http linear https://mcp.linear.app/mcp`).
 3. Run `/linear-workflow:issue-next`.
 
 ## Skills
@@ -111,14 +116,38 @@ confirm it before merging.
 
 ## The `linear-manager` agent
 
-Every skill hands Linear work to this agent. You can also ask for it directly ("use
-linear-manager to file a bug for…"). It:
+Use it for what the CLI doesn't do: filing issues, splitting a plan into sub-issues, labels,
+relations, milestones, searches ("use linear-manager to file a bug for…"). The skills also fall back
+to it when the CLI can't reach Linear. It follows the same rules as the CLI:
 
 - passes names, not IDs (`state: "In Review"`, `labels: ["Bug"]`, `assignee: "me"`)
 - makes status changes idempotent: a no-op when the issue is already in that state
 - checks a parent's sub-issues by asking whether an unfinished one exists, instead of listing them all
 - never returns issue descriptions in lists, so long backlogs don't flood your conversation
 - never edits files or runs git
+
+## The CLI
+
+The skills call it as `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" <command>`. You can run it
+yourself from any repo. It prints JSON on stdout and one summary line on stderr, stating what it
+examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human).
+
+| Command | What it does |
+| --- | --- |
+| `config` | The resolved settings: repo root, branch, team key, whether a key was found, `.claude/linear.json` |
+| `resolve [ABC-123\|123]` | Which issue to act on: the argument, then the branch name, then your only started issue. Exit 2 with `candidates` when it can't tell |
+| `issue <ABC-123>` | The issue with its description, open blockers, branch name and every comment, verbatim |
+| `queue [--limit N]` | The active cycle's actionable issues, epics replaced by their next sub-issue, ranked |
+| `plan-cycle [--limit N]` | Unscheduled, unblocked backlog issues for the active cycle, ranked |
+| `transition <ABC-123> <state> [--comment-file F] [--no-rollup]` | Idempotent status change, comment, parent roll-up |
+| `set-cycle <n> <ABC-123>…` | Put issues in a cycle and change nothing else |
+| `pr-check <ABC-123>` | Whether the issue's PR can merge: `ready`, `wait` (checks running) or `stop`, with reasons |
+
+`--team KEY` overrides `teamKey` from `.claude/linear.json`.
+
+Ranking is priority (Urgent first, no priority last), then milestone target date, then age. A parent
+rolls up only when no sibling is unfinished, and anything not done or canceled counts as unfinished
+(In Review included when the target is Done).
 
 ## The mod
 
@@ -157,8 +186,9 @@ linear-manager to file a bug for…"). It:
 
 - Claude Code **2.1.289** or later. Mods are a recent feature, and this is the version the plugin
   was built and tested on.
-- A Linear MCP connection for the skills and the agent (see Quick start).
-- A Linear personal API key for the mod (Linear → Settings → Security & access).
+- Node.js **22.18** or later for the CLI (it runs TypeScript directly, no build step).
+- A Linear personal API key, for the CLI and the mod.
+- Optional: a Linear MCP connection, for the `linear-manager` agent.
 - GitHub CLI `gh`, logged in, for `issue-review` and `issue-ship`.
 - git 2.23 or later (`git switch`).
 
@@ -226,10 +256,11 @@ label is scoped to everything.
 
 ## Privacy and data handling
 
-- **The mod** sends GraphQL queries to `api.linear.app` with your key (the current issue and team
-  keys). It never writes the key to disk.
-- **The skills and agent** use your Linear MCP connection and the `gh` CLI. What they return goes
-  into the conversation like any tool output.
+- **The CLI and the mod** send GraphQL queries and updates to `api.linear.app` with your key. They
+  never write it to disk. When you set the key as the secret plugin option, the mod exports it as
+  `LINEAR_API_KEY` to the session's shell so the CLI can use it.
+- **The CLI's `pr-check`** and the review and ship skills use the `gh` CLI. The agent uses your
+  Linear MCP connection. What any of them return goes into the conversation like any tool output.
 - **Session list:** each session writes `~/.claude/linear-workflow/sessions/<session-id>.json`
   (checkout path, issue id, title, state) every minute. These files stay on your machine and are
   deleted when the session ends, or after a day if it crashed. To turn this off, set
@@ -244,7 +275,10 @@ Configuration).
 **The details pane doesn't open by itself.** A pane the session opens on its own needs a wide
 terminal (about 144 columns). `/linear` opens it at any width.
 
-**The skills say Linear tools are missing.** Connect the Linear MCP server (Quick start, step 1),
+**A skill says `LINEAR_API_KEY not set`.** Set the key (Quick start, step 1). Run
+`node "<plugin>/bin/linear-workflow.ts" config` to see what the CLI finds.
+
+**The agent says Linear tools are missing.** Connect the Linear MCP server (Quick start, step 2),
 then restart the session.
 
 **`gh` errors in `issue-review` or `issue-ship`.** Run `gh auth status`. If the repository doesn't
@@ -259,18 +293,21 @@ allow your `mergeMethod`, `issue-ship` asks which one to use.
 - The skills follow GitHub's PR model through `gh`. GitLab and Bitbucket aren't supported.
 - The mod sees branch switches made through Claude Code, but not ones made in your own terminal.
   Use `/linear clear` after those.
-- The mod's logic has unit tests. The skills and the agent have no automated tests yet, and nothing
-  runs end to end against a real Linear workspace or GitHub repo.
+- The shared logic (ranking, roll-up, state matching, PR verdicts, mod helpers) has unit tests,
+  including transitions against a fake Linear API. Nothing runs end to end against a real Linear
+  workspace or GitHub repo.
 
 ## Development
 
 ```
 claude --plugin-dir .      # from this folder: load from source, hot-reloads on save
 claude plugin validate .
-claude plugin test .       # mod unit tests
+claude plugin test .       # unit tests (lib/ and the mod)
+npm install && npm run typecheck   # dev only: mod + lib, then CLI + lib
 ```
 
-The engine generates `.claude-plugin/types/` when the mod loads. After that, `tsc -p .` type-checks it.
+The engine generates `.claude-plugin/types/` when the mod loads, and the type-check needs it.
+Layout: `lib/` is shared code with no Node or browser APIs; `hooks/` is the mod; `bin/` is the CLI.
 
 ## Author
 

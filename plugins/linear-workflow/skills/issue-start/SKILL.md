@@ -1,33 +1,39 @@
 ---
 name: issue-start
-description: Start work on a Linear issue — fetch it, move it to In Progress, load its context and comments, create its branch, then begin
+description: Start work on a Linear issue — fetch it, move it to In Progress, load its context and comments, create its branch from the base, then begin
 argument-hint: "<ABC-123>"
 ---
 
-# /linear-workflow:issue-start — begin work on a Linear issue
+# issue-start — begin work on a Linear issue
 
 Takes you from a cold start to implementation in one command. There is no "ready to proceed?" pause.
 
-## 1. Parse the identifier
+The deterministic steps run through the bundled CLI. It prints JSON on stdout and one summary line
+on stderr. Exit 0 means ok, 1 means an error (the message is in `error`), and 2 means it refused.
 
-Take the issue id from `$ARGUMENTS`: `ABC-123`, `abc-123`, `#123` or `123`. For a bare number, use the
-`teamKey` from `.claude/linear.json` if present. Normalize to `ABC-123`. If the argument is empty, stop with
-`Usage: /linear-workflow:issue-start <ABC-123>`.
+```bash
+LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
+```
 
-## 2. Fetch and transition
+**Fallback:** if a CLI call exits 1 because the API key is missing or Linear is unreachable, do the same
+step through the `linear-workflow:linear-manager` agent and say that you did.
 
-Spawn the `linear-workflow:linear-manager` agent:
+## 1. Fetch
 
-> Fetch <ID> with its relations and move it to "In Progress". Return title, state, priority,
-> parent (id and title), open blockers (id and state), cycle, milestone, labels, `gitBranchName`, URL
-> and the full description. List every comment on the issue and return each one **verbatim**
-> (author, date, full body).
+```bash
+node "$LW" issue "$ARGUMENTS"
+```
 
-If it reports "Already in In Progress", continue.
+`$ARGUMENTS` can be `ABC-123`, `#123` or `123`; a bare number needs `teamKey` in `.claude/linear.json`.
+Exit 1 on a bad id → stop with `Usage: /linear-workflow:issue-start <ABC-123>`.
 
-## 3. Show the context
+The JSON has `identifier`, `title`, `state`, `priorityLabel`, `parent`, `blockedBy` (open blockers only),
+`cycle`, `milestone`, `labels`, `branchName`, `url`, `description`, and `comments` (every comment, oldest
+first, verbatim).
 
-From the description, show `## Context`, `## Implementation` and `## Scope` verbatim, or the whole
+## 2. Show the context
+
+From `description`, show `## Context`, `## Implementation` and `## Scope` verbatim, or the whole
 description if it has no such headings. Leave out `## Acceptance Criteria`: those are for the
 reviewer. Loading them at the start pushes the work toward ticking boxes.
 
@@ -37,7 +43,7 @@ comment that contradicts the description wins. If the conflict is material, say 
 there are no comments, print `Comments: none`.
 
 ```markdown
-**ABC-123: <title>** — In Progress   (parent: ABC-100 <title>)
+**ABC-123: <title>** — <state>   (parent: ABC-100 <title>)
 
 ## Context …
 ## Implementation …
@@ -45,23 +51,30 @@ there are no comments, print `Comments: none`.
 ## Comments (N)
 ```
 
-If the issue has open blockers, list them and ask `Continue anyway? [y/N]`. Go on only on a yes.
+If `blockedBy` is not empty, list the blockers and ask `Continue anyway? [y/N]`. Go on only on a yes.
+
+## 3. Move to In Progress
+
+```bash
+node "$LW" transition <ID> "In Progress" --no-rollup
+```
+
+Idempotent: if the issue is already in that state, nothing is written.
 
 ## 4. Branch
 
-Use the `gitBranchName` Linear returned (fall back to `<abc-123>-<slugified-title>` if it is missing).
-If the branch already exists, switch to it. Otherwise create it **from the up-to-date base**, never
-from whatever is checked out now. Starting from another issue's branch would drag its commits into
-this PR. `<base>` is the configured `baseBranch`, else the repo's default branch
-(`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`, or `main`):
+If the working tree has uncommitted changes that are not part of this issue, stop and ask before
+switching branches. Never stash or discard them.
+
+Use `branchName` from step 1 (fall back to `<abc-123>-<slugified-title>`). If the branch exists,
+switch to it. Otherwise create it **from the up-to-date base**, never from what is checked out now:
+starting from another issue's branch would drag its commits into this PR. `<base>` is `baseBranch`
+from `node "$LW" config`, else the repo's default branch.
 
 ```bash
 git fetch origin "<base>" && \
 { git switch "<branch>" 2>/dev/null || git switch -c "<branch>" "origin/<base>"; }
 ```
-
-If the working tree has uncommitted changes that are not part of this issue, stop and ask before
-switching branches. Never stash or discard them.
 
 Print one line: `` Branch `<branch>` · <priority> · cycle <n|none> · milestone <name|none> ``.
 
@@ -71,4 +84,5 @@ Begin right away on the Implementation and Scope steps and on any actionable com
 relevant files and make the first change. Stop only for a real blocker that needs the user's
 decision.
 
-When the work is done: `/linear-workflow:issue-review <ABC-123>` opens the PR, and `/linear-workflow:issue-ship <ABC-123>` merges it.
+When the work is done, run `/linear-workflow:issue-review` to open the PR, then
+`/linear-workflow:issue-ship` to merge it.

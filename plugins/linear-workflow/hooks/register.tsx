@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
+import { createClient } from '../lib/linear.ts'
 import type { Issue, IssueSource, SessionEntry } from '../types'
 import {
   checkoutLabel,
@@ -17,7 +18,7 @@ import {
   stateColor,
   TEAMS_QUERY,
   toIssue,
-} from './logic'
+} from '../lib/logic.ts'
 
 const PANE = 'linear-workflow'
 const HEARTBEAT_MS = 60 * 1000
@@ -82,7 +83,11 @@ async function loadRepo($: EngineInterface): Promise<Repo | null> {
 }
 
 async function loadKey($: EngineInterface): Promise<string | undefined> {
-  if (config.linearApiKey) return config.linearApiKey
+  if (config.linearApiKey) {
+    // Hand the secret option to the workflow CLI, which runs in Bash.
+    await $.env.set('LINEAR_API_KEY', config.linearApiKey)
+    return config.linearApiKey
+  }
   const fromEnv = await $.env.get('LINEAR_API_KEY')
   if (fromEnv) return fromEnv
   if (!repo) return undefined
@@ -150,10 +155,9 @@ function pinnedSource(
 async function fetchIssue($: EngineInterface, id: string): Promise<Issue | string> {
   if (!apiKey) return 'Linear API key not found (plugin option, LINEAR_API_KEY env, or <repo>/.env)'
   try {
-    const body = await linearQuery<{ data?: { issue?: unknown }; errors?: { message: string }[] }>($, ISSUE_QUERY, { id })
-    if (body.errors?.[0]) return `${id}: ${body.errors[0].message}`
-    if (!body.data?.issue) return `${id}: not found`
-    return toIssue(body.data.issue as Parameters<typeof toIssue>[0])
+    const data = await linear($).query<{ issue?: unknown }>(ISSUE_QUERY, { id })
+    if (!data.issue) return `${id}: not found`
+    return toIssue(data.issue as Parameters<typeof toIssue>[0])
   } catch (err) {
     return `${id}: ${err instanceof Error ? err.message : 'fetch failed'}`
   }
@@ -248,13 +252,11 @@ async function refreshNow($: EngineInterface, force: boolean): Promise<void> {
   await update($, issueAtom, () => got)
 }
 
-async function linearQuery<T>($: EngineInterface, query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await $.http.fetch('https://api.linear.app/graphql', {
-    method: 'POST',
-    headers: { Authorization: apiKey ?? '', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables }),
-  })
-  return JSON.parse(res.text) as T
+function linear($: EngineInterface) {
+  return createClient(async (url, init) => {
+    const res = await $.http.fetch(url, init)
+    return { status: res.status, text: res.text }
+  }, apiKey ?? '')
 }
 
 async function loadTeamKeys($: EngineInterface): Promise<string[]> {
@@ -271,8 +273,8 @@ async function loadTeamKeys($: EngineInterface): Promise<string[]> {
   }
   if (!apiKey) return []
   try {
-    const body = await linearQuery<{ data?: { teams?: { nodes: { key: string }[] } } }>($, TEAMS_QUERY)
-    return parseTeamKeys((body.data?.teams?.nodes ?? []).map(t => t.key).join(','))
+    const data = await linear($).query<{ teams: { nodes: { key: string }[] } }>(TEAMS_QUERY)
+    return parseTeamKeys(data.teams.nodes.map(t => t.key).join(','))
   } catch {
     return []
   }

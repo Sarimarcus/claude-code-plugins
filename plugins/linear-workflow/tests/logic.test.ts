@@ -14,7 +14,7 @@ import {
   readEnvValue,
   scopeSites,
   STALE_MS,
-} from '../hooks/logic'
+} from '../lib/logic.ts'
 
 const KEYS = ['ENG']
 const SITES = ['web', 'api', 'docs']

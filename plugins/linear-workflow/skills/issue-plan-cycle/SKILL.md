@@ -4,30 +4,35 @@ description: Feed the active Linear cycle from the backlog — list unscheduled,
 disable-model-invocation: true
 ---
 
-# /linear-workflow:issue-plan-cycle — add backlog issues to the active cycle
+# issue-plan-cycle — add backlog issues to the active cycle
 
 Changes cycle membership only. It never touches priority, status, milestone or assignee.
 
+```bash
+LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
+```
+
 ## 1. Fetch
 
-Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `linear-workflow:linear-manager`:
+```bash
+node "$LW" plan-cycle --limit 15
+```
 
-> For team <team>: return the current cycle (number, start, end, issue count). Then list issues
-> in project <project, or all projects> assigned to <assignee, default me>, in a Backlog or Todo
-> state, in no cycle, with no open blocker. Leave out sub-issues whose parent is already in the
-> cycle, and report how many were left out and how many were blocked. Order by priority, then
-> milestone target date, then creation date. Return at most 15, with identifier, title, priority,
-> milestone (name and date), parent and URL. Never return descriptions.
+The CLI selects your unscheduled, unblocked Backlog and Todo issues in the cycle's team (and in
+`project` if set), ranked. It holds back sub-issues whose parent is already in the cycle.
+JSON: `cycle` (with `issueCount`), `examined`, `candidates`, `droppedBlocked`, `droppedChildren`.
 
-- No active cycle → stop: `No active cycle. Create one in Linear first.`
-- No candidates → stop, and say how many were held back as blocked and how many as children, so
-  "nothing to schedule" is distinguishable from "everything was filtered out".
+- Exit 1 for a missing key or a Linear failure → ask the `linear-workflow:linear-manager` agent for
+  the same list and say so.
+- `cycle` is null → stop: `No active cycle. Create one in Linear first.`
+- `candidates` is empty → stop, and report `droppedBlocked` and `droppedChildren`, so "nothing to
+  schedule" is distinguishable from "everything was filtered out".
 
 ## 2. Show
 
 ```
 Cycle #11 (2026-09-07 → 2026-09-21) — 24 issues in cycle
-Candidates (10 of 33; 4 blocked, 7 sub-issues held back):
+Candidates (10 of 33 examined; 4 blocked, 7 sub-issues held back):
 
   ABC-285  Urgent  <title>
   ABC-451  High    <title>   (milestone: <name>, 2026-09-30)
@@ -41,8 +46,13 @@ No scoring and no capacity estimate: how much goes into the cycle is the user's 
 
 ## 4. Write
 
-Spawn `linear-workflow:linear-manager`: `Set the cycle to <number> on <ids>. Change no other field.`
+```bash
+node "$LW" set-cycle <number> <ids…>
+```
+
+The JSON lists `set`, `already` and `failed`. Exit 1 means at least one failed.
 
 ## 5. Report
 
-The issues that were added (✓) and the ones skipped by your choice (—).
+The issues added (✓), the ones already in the cycle, any failures with their error, and the ones
+skipped by your choice (—).

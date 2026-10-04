@@ -2,7 +2,7 @@
   "name": "linear-workflow",
   "displayName": "Linear Workflow",
   "version": "0.1.0",
-  "description": "Linear workflow for Claude Code: issue-next, issue-start, issue-review, issue-ship and issue-plan-cycle skills, a linear-manager agent, and a mod that shows the current issue above the prompt with your other sessions and conflict warnings",
+  "description": "Linear workflow for Claude Code: issue-next, issue-start, issue-review, issue-ship and issue-plan-cycle skills backed by a deterministic CLI, a linear-manager agent, and a mod that shows the current issue above the prompt with your other sessions and conflict warnings",
   "author": {
     "name": "Olivier Depiesse",
     "url": "https://github.com/Sarimarcus"

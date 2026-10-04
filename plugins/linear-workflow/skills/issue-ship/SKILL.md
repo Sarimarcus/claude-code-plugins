@@ -1,77 +1,84 @@
 ---
 name: issue-ship
-description: Ship a Linear issue — merge its reviewed PR, update the base branch locally, verify the merge landed, and close the issue
+description: Ship a Linear issue — check its PR can land, merge it, verify the merge on GitHub, and close the issue
 argument-hint: "[<ABC-123>]"
 disable-model-invocation: true
 ---
 
-# /linear-workflow:issue-ship — merge the PR and close the issue
+# issue-ship — merge the PR and close the issue
 
-Lands the PR that `/linear-workflow:issue-review` opened. Typing `/linear-workflow:issue-ship <ABC-123>` yourself authorizes merging
-**that issue's PR**. That authorization does not extend to anything else. If the id was
-auto-discovered rather than typed, confirm it once before merging.
-
-## 1. Resolve the issue
-
-Same as `/linear-workflow:issue-review` step 1: the argument, then this session's issue, then the branch name, then
-Linear. Read `.claude/linear.json` (`baseBranch`, `mergeMethod`, `deleteBranch`).
-
-## 2. Find the PR and check that it can land
+Lands the PR that `issue-review` opened. Typing `/linear-workflow:issue-ship <ABC-123>` yourself
+authorizes merging **that issue's PR**. That authorization does not extend to anything else. If the
+id was resolved rather than typed, confirm it once before merging.
 
 ```bash
-gh pr list --state open --search "ABC-123 in:title,body" --json number,url,headRefName,headRefOid,isDraft,mergeable,reviewDecision
+LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
 ```
 
-Fall back to `gh pr view <current branch>`. Then:
+## 1. Resolve
 
-- **No open PR** → stop: `No open PR for ABC-123. Run /linear-workflow:issue-review ABC-123 first.` Never merge
-  unreviewed work by pushing to the base branch.
-- **More than one** → list them and ask which to merge.
-- **Draft, conflicts (`mergeable: CONFLICTING`), or changes requested** → stop and say which.
-- **Uncommitted or unpushed changes on the PR branch** → stop: they are not in the PR. Run
-  `/linear-workflow:issue-review` again to push them.
-- Show the PR's check status (`gh pr checks <number>`). If checks failed, stop. If they are still
-  pending, ask whether to wait.
+Same as `issue-review` step 1: the session's issue, else `node "$LW" resolve $ARGUMENTS`.
+`node "$LW" config` gives `baseBranch`, `mergeMethod` (default `merge`) and `deleteBranch`.
+
+## 2. Can it land?
+
+```bash
+node "$LW" pr-check ABC-123
+```
+
+The CLI makes the decision, so don't second-guess it:
+
+- **Exit 0, `verdict: ready`** → continue.
+- **Exit 2, `verdict: wait`** → only checks are still running. Show them and ask whether to wait
+  (re-run `pr-check` afterwards) or stop.
+- **Exit 2, `verdict: stop`** → show every entry in `reasons` and stop. These cover: no open PR, more
+  than one PR, a draft, conflicts, changes requested, failed checks, uncommitted local changes on the
+  PR branch, and a local head that differs from the PR head. For "no open PR", point to
+  `issue-review`. For several PRs, list `candidates` and ask which one.
+- **Exit 1** → `gh` failed (not installed or not logged in): show the error and stop.
 
 ## 3. Merge
 
-Print `Merging <PR url> — ABC-123 <title>.`, then use `mergeMethod` (default `merge`):
+Print `Merging <pr.url> — ABC-123 <title>.`, then use `mergeMethod`:
 
 - `merge` / `squash` / `rebase` →
-  `gh pr merge <number> --<method> [--delete-branch]`. If the repo doesn't allow that method, gh
+  `gh pr merge <pr.number> --<method> [--delete-branch]`. If the repo doesn't allow that method, gh
   says so. Ask which allowed method to use instead.
-- `local` → merge locally so your own `pre-push` hooks run. Merge the PR head **as GitHub has it**,
-  not your local branch, because commits made on GitHub (e.g. an accepted review suggestion) only exist there.
-  Check that `origin/<head>` matches the PR's `headRefOid` before merging. If it doesn't, stop.
+- `local` → merge locally so your own `pre-push` hooks run. Merge the PR head **as GitHub has it**
+  (`pr.headRefOid`), not your local branch:
   ```bash
-  git fetch origin "<base>" "<head>" && \
-  test "$(git rev-parse "origin/<head>")" = "<headRefOid>" && \
+  git fetch origin "<base>" "<pr.headRefName>" && \
+  test "$(git rev-parse "origin/<pr.headRefName>")" = "<pr.headRefOid>" && \
   git switch "<base>" && git pull --ff-only && \
-  git merge --no-ff "origin/<head>" -m "Merge: <title> (ABC-123)" && git push
+  git merge --no-ff "origin/<pr.headRefName>" -m "Merge: <title> (ABC-123)" && git push
   ```
-  If this fails, stop and report it. Never force-push. A diverged base is reported as that, not as a
-  merge conflict.
+  If this fails, stop and report it. Never force-push. A diverged base is reported as that, not as
+  a merge conflict.
 
 ## 4. Verify that it landed
 
 Don't trust a command's success output. Check the remote:
 
 ```bash
-gh pr view <number> --json state,mergeCommit -q '.state + " " + (.mergeCommit.oid // "")'
+gh pr view <pr.number> --json state,mergeCommit -q '.state + " " + (.mergeCommit.oid // "")'
 ```
 
 `MERGED` with a commit → continue. Anything else → stop before touching Linear, and say what state
-the PR is in.
-
-Then update the local checkout: `git switch <base> && git pull --ff-only`.
+the PR is in. Then update the local checkout: `git switch <base> && git pull --ff-only`.
 
 ## 5. Linear
 
-Spawn `linear-workflow:linear-manager`:
+Write the close-out comment to a temp file, then:
 
-> Move ABC-123 to "Done" (no-op if Linear's GitHub integration already did). Add a comment:
-> Changed: <one line> · Files: merge commit `<sha>` · Verified: PR <url> merged, checks <status> ·
-> Next: shipped. If ABC-123 is a sub-issue, roll its parent up when no sibling is unfinished.
+```bash
+node "$LW" transition ABC-123 Done --comment-file <file>
+```
+
+The comment: `- **Changed:** <one line>` · `- **Files:** merge commit <sha>` ·
+`- **Verified:** PR <url> merged, checks green` · `- **Next:** shipped`.
+This is idempotent, so it works whether or not Linear's GitHub integration already closed the issue.
+It also rolls the parent up when no sibling is unfinished; anything not done or canceled counts as
+unfinished, In Review included.
 
 ## 6. Report
 
@@ -79,5 +86,5 @@ Spawn `linear-workflow:linear-manager`:
 ABC-123 shipped.
   PR:     <url> merged (<method>) as <sha>
   Local:  <base> at <sha>
-  Linear: Done, comment posted
+  Linear: Done (<changed or already>), comment posted<, parent ABC-100 rolled up | stays: N unfinished>
 ```

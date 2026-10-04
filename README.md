@@ -16,7 +16,7 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 
 | Plugin | Kind | What it does |
 | --- | --- | --- |
-| [linear-workflow](plugins/linear-workflow) | skills + agent + mod | Linear workflow: `issue-*` skills from cycle to merged PR, a `linear-manager` agent, and a mod showing the current issue, your other sessions and conflict warnings |
+| [linear-workflow](plugins/linear-workflow) | skills + CLI + agent + mod | Linear workflow: `issue-*` skills from cycle to merged PR, backed by a deterministic CLI, a `linear-manager` agent, and a mod showing the current issue, your other sessions and conflict warnings |
 
 ## Layout
 
