@@ -49,7 +49,7 @@ describe('source', () => {
   test('majority of site branches when root is main', async () => {
     const s = pickSource('main', { a: 'alex/eng-6-y', b: 'alex/eng-6-y', c: 'alex/eng-7-z' }, KEYS)
     expect(s?.id).toBe('ENG-6')
-    expect(s?.detail).toBe('2 site(s) on it, mixed: ENG-7')
+    expect(s?.detail).toBe('2 project(s) on it, mixed: ENG-7')
   })
   test('nothing', async () => {
     expect(pickSource('main', { a: 'main' }, KEYS)).toBe(null)
