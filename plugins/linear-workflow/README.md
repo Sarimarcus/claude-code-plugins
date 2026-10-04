@@ -1,6 +1,6 @@
 # Linear Workflow
 
-Work Linear issues from Claude Code, from picking the next issue in the cycle to the merged PR.
+Work [Linear](https://linear.app) issues from Claude Code, from picking the next issue in the cycle to the merged PR.
 Linear stays up to date along the way, and the current issue is always shown above the prompt.
 
 ## Overview
@@ -30,11 +30,12 @@ the menu.
 /plugin install linear-workflow@sarimarcus
 ```
 
-1. Set a Linear API key (Linear → Settings → Security & access): `export LINEAR_API_KEY=lin_api_…`
+1. Create a [Linear personal API key](https://linear.app/settings/account/security) (Settings →
+   Security & access; see [Linear's API docs](https://linear.app/docs/api-and-webhooks)) and set it: `export LINEAR_API_KEY=lin_api_…`
    in your shell profile, or a `LINEAR_API_KEY=` line in your repo's git-ignored `.env`. The CLI and
    the mod both use it.
-2. Optional: connect Linear's MCP server for the `linear-manager` agent (the Linear connector on
-   claude.ai, or `claude mcp add --transport http linear https://mcp.linear.app/mcp`).
+2. Optional: connect [Linear's MCP server](https://linear.app/docs/mcp) for the `linear-manager`
+   agent (the Linear connector on claude.ai, or `claude mcp add --transport http linear https://mcp.linear.app/mcp`).
 3. Run `/linear-workflow:issue-next`.
 
 ## Skills
@@ -206,8 +207,10 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 - Claude Code **2.1.289** or later. Mods are a recent feature, and this is the version the plugin
   was built and tested on.
 - Node.js **22.18** or later for the CLI (it runs TypeScript directly, no build step).
-- A Linear personal API key, for the CLI and the mod.
-- Optional: a Linear MCP connection, for the `linear-manager` agent.
+- A [Linear personal API key](https://linear.app/settings/account/security), for the CLI and the mod.
+- Optional: a [Linear MCP](https://linear.app/docs/mcp) connection, for the `linear-manager` agent.
+- Optional: [Linear's GitHub integration](https://linear.app/docs/github), which links PRs to issues and
+  moves them on merge. The skills work with or without it, because their transitions are idempotent.
 - GitHub CLI `gh`, logged in, for `issue-review` and `issue-ship`.
 - git 2.23 or later (`git switch`).
 
