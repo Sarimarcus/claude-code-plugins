@@ -386,14 +386,21 @@ export const register: Register = (on, options) => {
 
     const rule = (
       <Box>
-        <Text dimColor>── </Text>
-        <Text bold dimColor>Linear</Text>
-        <Text dimColor wrap="truncate"> {'─'.repeat(Math.max(0, width - 10))}</Text>
+        <Box flexShrink={0}>
+          <Text dimColor>── </Text>
+          <Text bold dimColor>Linear</Text>
+          <Text> </Text>
+        </Box>
+        <Box flexShrink={1} overflow="hidden">
+          <Text dimColor wrap="truncate">{'─'.repeat(Math.max(0, width))}</Text>
+        </Box>
       </Box>
     )
     const sessionsRow = others.length > 0 && (
       <Box>
-        <Text dimColor>  sessions  </Text>
+        <Box flexShrink={0}>
+          <Text dimColor>  sessions  </Text>
+        </Box>
         {others.map((o, i) => {
           const clash = clashing.has(o.sessionId)
           const text = o.issue ? `${o.issue}${o.state ? ` ${o.state}` : ''} (${o.label})` : `${o.label}: no issue`
@@ -456,8 +463,10 @@ export const register: Register = (on, options) => {
         </Box>
         <Text wrap="truncate">  {issue.title}</Text>
         <Box justifyContent="space-between">
-          <Text dimColor wrap="truncate">  {meta.join(' · ')}</Text>
-          {buttons}
+          <Box flexShrink={1}>
+            <Text dimColor wrap="truncate">  {meta.join(' · ')}</Text>
+          </Box>
+          <Box flexShrink={0}>{buttons}</Box>
         </Box>
         {sessionsRow}
       </Box>
@@ -475,17 +484,26 @@ export const register: Register = (on, options) => {
 
     const section = (title: string, count?: number) => (
       <Box marginTop={1}>
-        <Text dimColor>── </Text>
-        <Text bold>{title}</Text>
-        {count !== undefined && <Text dimColor> {count}</Text>}
-        <Text dimColor wrap="truncate"> {'─'.repeat(Math.max(0, width))}</Text>
+        <Box flexShrink={0}>
+          <Text dimColor>── </Text>
+          <Text bold>{title}</Text>
+          {count !== undefined && <Text dimColor> {count}</Text>}
+          <Text> </Text>
+        </Box>
+        <Box flexShrink={1} overflow="hidden">
+          <Text dimColor wrap="truncate">{'─'.repeat(Math.max(0, width))}</Text>
+        </Box>
       </Box>
     )
     const field = (label: string, value: string | null | undefined) =>
       value ? (
         <Box key={label}>
-          <Text dimColor>{label.padEnd(11)}</Text>
-          <Text wrap="truncate">{value}</Text>
+          <Box flexShrink={0} width={11}>
+            <Text dimColor>{label}</Text>
+          </Box>
+          <Box flexShrink={1}>
+            <Text wrap="truncate">{value}</Text>
+          </Box>
         </Box>
       ) : null
     const othersSection = others.length > 0 && (
