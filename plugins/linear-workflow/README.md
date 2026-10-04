@@ -3,8 +3,6 @@
 Work Linear issues from Claude Code, from picking the next issue in the cycle to the merged PR.
 Linear stays up to date along the way, and the current issue is always shown above the prompt.
 
-![The Linear band above the prompt and the details pane](docs/band.png)
-
 ## Overview
 
 The plugin has four parts:

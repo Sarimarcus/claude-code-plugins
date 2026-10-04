@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — 2026-10-04
+
+- Acceptance criteria written under sub-headings, or as prose, are now checked by `issue-review`
+  (they were hidden from `issue-start` but missed by the parser)
+- The plugin package includes its MIT `LICENSE`
+- Release workflow: verifies the tagged commit (validate, type-check, tests) before publishing, and
+  marks `-rc`-style versions as prereleases; CI pins Claude Code 2.1.289
+- Removed the README screenshot
+
 ## 0.1.0 — 2026-10-04
 
 First public release.
