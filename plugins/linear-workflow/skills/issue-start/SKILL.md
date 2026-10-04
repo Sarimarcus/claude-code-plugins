@@ -1,4 +1,5 @@
 ---
+name: issue-start
 description: Start work on a Linear issue — fetch it, move it to In Progress, load its context and comments, create its branch, then begin
 argument-hint: "<ABC-123>"
 ---

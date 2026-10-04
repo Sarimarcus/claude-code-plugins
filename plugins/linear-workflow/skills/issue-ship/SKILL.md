@@ -1,6 +1,8 @@
 ---
+name: issue-ship
 description: Ship a Linear issue — merge its reviewed PR, update the base branch locally, verify the merge landed, and close the issue
 argument-hint: "[<ABC-123>]"
+disable-model-invocation: true
 ---
 
 # /linear-workflow:issue-ship — merge the PR and close the issue

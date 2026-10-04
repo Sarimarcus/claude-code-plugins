@@ -1,4 +1,5 @@
 ---
+name: issue-next
 description: Pick the next Linear issue to work on — the active cycle's unblocked issues ranked by priority and milestone urgency, with an offer to start the top one
 ---
 

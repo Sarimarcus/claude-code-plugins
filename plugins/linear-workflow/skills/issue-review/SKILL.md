@@ -1,6 +1,8 @@
 ---
+name: issue-review
 description: Put a Linear issue up for review — run the project's checks, commit, push the branch, open a PR that closes the issue, move it to In Review
 argument-hint: "[<ABC-123>]"
+disable-model-invocation: true
 ---
 
 # /linear-workflow:issue-review — open the PR for a Linear issue

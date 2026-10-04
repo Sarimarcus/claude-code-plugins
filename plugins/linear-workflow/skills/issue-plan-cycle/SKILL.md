@@ -1,5 +1,7 @@
 ---
+name: issue-plan-cycle
 description: Feed the active Linear cycle from the backlog — list unscheduled, unblocked candidates by priority, confirm, then set their cycle
+disable-model-invocation: true
 ---
 
 # /linear-workflow:issue-plan-cycle — add backlog issues to the active cycle
