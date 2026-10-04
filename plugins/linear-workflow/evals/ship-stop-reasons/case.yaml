@@ -18,10 +18,10 @@ execution:
 context:
   scaffold_script: "scaffold.sh"
 graders:
-  - name: "asks-the-cli-pr-check"
+  - name: "asks-the-cli-ship"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+pr-check"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+ship"
     min: 1
   - name: "never-merges-or-pushes"
     type: "tool_used"

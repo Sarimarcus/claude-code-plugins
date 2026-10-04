@@ -1,5 +1,6 @@
 ---
 name: issue-plan-cycle
+model: haiku
 description: Feed the active Linear cycle from the backlog — list unscheduled, unblocked candidates by priority, confirm, then set their cycle
 disable-model-invocation: true
 ---
@@ -18,12 +19,13 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" plan-cycle --limit 15
 
 The CLI selects your unscheduled, unblocked Backlog and Todo issues in the cycle's team (and in
 `project` if set), ranked. It holds back sub-issues whose parent is already in the cycle.
-JSON: `cycle` (with `issueCount`), `examined`, `candidates`, `droppedBlocked`, `droppedChildren`.
+JSON: `cycle` (`number`, `startsAt`, `endsAt`, `issueCount`), `examined`, `blocked` and `childrenHeldBack`
+(counts), and `candidates`, each `{id, title, priority, milestone}`.
 
 - Exit 1 for a missing key or a Linear failure → ask the `linear-workflow:linear-manager` agent for
   the same list and say so.
 - `cycle` is null → stop: `No active cycle. Create one in Linear first.`
-- `candidates` is empty → stop, and report `droppedBlocked` and `droppedChildren`, so "nothing to
+- `candidates` is empty → stop, and report `blocked` and `childrenHeldBack`, so "nothing to
   schedule" is distinguishable from "everything was filtered out".
 
 ## 2. Show

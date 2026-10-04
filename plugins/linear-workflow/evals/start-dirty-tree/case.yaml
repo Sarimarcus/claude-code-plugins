@@ -18,6 +18,11 @@ execution:
 context:
   scaffold_script: "scaffold.sh"
 graders:
+  - name: "asks-the-cli-start"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+start"
+    min: 1
   - name: "never-stashes-or-discards"
     type: "tool_used"
     tool: "Bash"

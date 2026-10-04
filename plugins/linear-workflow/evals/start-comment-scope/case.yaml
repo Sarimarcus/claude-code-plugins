@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: "start-comment-scope"
 description: "issue-start where a comment adds scope"
-expected_outcome: "Reproduces the actionable comment verbatim, hides the acceptance criteria"
+expected_outcome: "Reproduces the actionable comment verbatim"
 tags:
   - "start"
   - "context"
@@ -19,20 +19,21 @@ execution:
 context:
   scaffold_script: "scaffold.sh"
 graders:
-  - name: "asks-the-cli-issue"
+  - name: "asks-the-cli-start"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+issue"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+start"
     min: 1
   - name: "comment-verbatim"
     type: "regex"
     pattern: "acme-theme`?,? and do NOT touch the print stylesheet"
     target: "last_message"
-  - name: "hides-acceptance-criteria"
-    type: "regex"
-    pattern: "SECRET-AC-MARKER"
-    match: "not_contains"
-    target: "last_message"
+  - name: "one-call-not-three"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+(issue|config|resolve)\\b"
+    min: 0
+    max: 0
   - name: "never-destructive-git"
     type: "tool_used"
     tool: "Bash"

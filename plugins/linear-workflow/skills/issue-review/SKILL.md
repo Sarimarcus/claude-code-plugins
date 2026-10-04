@@ -21,47 +21,41 @@ steps below are the defaults.
 If a CLI call exits 1 because the API key is missing or Linear is unreachable, do that step through
 the `linear-workflow:linear-manager` agent instead and say so.
 
-## 1. Resolve the issue and settings
-
-If this session started an issue with `issue-start` and no argument was given, use that id. Otherwise:
+## 1. Everything the review needs (one call)
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" resolve $ARGUMENTS
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" config
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" review $ARGUMENTS
 ```
 
-`resolve` takes the argument, then the issue id in the branch name, then your only started issue in
-Linear. Exit 2 → it found none or several: stop and list `candidates`. If the id came from the
-branch or from Linear, print `Resolved ABC-123 (from <from>)` before anything else.
+Without an argument, pass the issue this session started with `issue-start`, if any. Otherwise the
+CLI resolves it: the issue id in the branch name, then your only started issue in Linear. Exit 2 →
+it found none or several: stop and list `candidates`. If `issue.from` isn't `argument`, print
+`Resolved ABC-123 (from <from>)` before anything else.
 
-`config` gives `branch`, the resolved `baseBranch`, `onBaseBranch`, `existingPr` (the open PR for
-this branch, or null) and `checks`.
+`issue` has `identifier`, `title`, `labels` and `acceptanceCriteria`. `repo` has `branch`,
+`baseBranch`, `onBaseBranch`, `branchIssue` (the issue id the branch name points to), `existingPr`
+(this branch's open PR, or null), `checks` and `dirty` (count and first files).
 
 ## 2. Pre-flight
 
-- `onBaseBranch` is true → stop: there is no branch to review. Run `issue-start` first or switch to
-  the issue's branch.
-- `branchIssue` (the issue id `config` read from the branch name) is another issue → stop: this branch
-  belongs to that issue, and committing here would put this work under it. `branchIssue` is null
-  (the branch names no issue) → say so and ask before going on.
-- Show `git status --short`. If files that clearly don't belong to this issue are modified, ask
-  which ones to include. Never commit them silently.
+- `repo.onBaseBranch` is true → stop: there is no branch to review. Run `issue-start` first or switch
+  to the issue's branch.
+- `repo.branchIssue` is another issue → stop: this branch belongs to that issue, and committing here
+  would put this work under it. `repo.branchIssue` is null (the branch names no issue) → say so and
+  ask before going on.
+- Look at the uncommitted files. If some clearly don't belong to this issue, ask which ones to
+  include. Never commit them silently.
 
 ## 3. Acceptance criteria
 
-`issue-start` left these out on purpose. Check them now, before anything is committed:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" issue ABC-123
-```
-
-For each entry in `acceptanceCriteria`, say whether the change meets it, with the evidence (the file,
+`issue-start` left these out on purpose. Check them now, before anything is committed. For each
+entry in `issue.acceptanceCriteria`, say whether the change meets it, with the evidence (the file,
 test or behaviour). If any isn't met, or you can't tell, list those and ask whether to open the PR
 anyway. If the list is empty, say the issue has no acceptance criteria.
 
 ## 4. Checks
 
-Run each command in `checks`, in order. If none are configured, infer the obvious ones (e.g.
+Run each command in `repo.checks`, in order. If none are configured, infer the obvious ones (e.g.
 `npm run build` / `npm test` when `package.json` defines them, `make test`, `cargo test`) and say
 which ones you ran. Stop on the first failure and show its output. Don't commit.
 
@@ -80,12 +74,12 @@ yours, for example another session's in a shared checkout. If one seems necessar
 
 ## 6. Open the PR
 
-If `config` reported an `existingPr`, reuse it. Otherwise open one. If the repo has a PR template
+If `repo.existingPr` is set, reuse it. Otherwise open one. If the repo has a PR template
 (`.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE/`), fill that in and add the
 `Closes ABC-123` line to it; otherwise use:
 
 ```bash
-gh pr create --base "<baseBranch>" --title "<title> (ABC-123)" --body "$(cat <<'BODY'
+gh pr create --base "<repo.baseBranch>" --title "<title> (ABC-123)" --body "$(cat <<'BODY'
 ## Summary
 
 Closes ABC-123.

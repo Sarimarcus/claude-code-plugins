@@ -20,24 +20,26 @@ steps below are the defaults.
 **Fallback:** if a CLI call exits 1 because the API key is missing or Linear is unreachable, do the same
 step through the `linear-workflow:linear-manager` agent and say that you did.
 
-## 1. Fetch
+## 1. Fetch (one call)
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" issue "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" start "$ARGUMENTS"
 ```
 
 `$ARGUMENTS` can be `ABC-123`, `#123` or `123`; a bare number needs `teamKey` in `.claude/linear.json`.
 Exit 1 on a bad id → stop with `Usage: /linear-workflow:issue-start <ABC-123>`.
 
-The JSON has `identifier`, `title`, `state`, `priorityLabel`, `parent`, `blockedBy` (open blockers only),
-`cycle`, `milestone`, `labels`, `branchName`, `url`, `description`, and `comments` (every comment, oldest
-first, verbatim).
+`issue` has `identifier`, `title`, `url`, `state`, `priority`, `parent`, `blockedBy` (open blockers
+only), `cycle`, `milestone`, `branchName`, `description` and `comments` (every comment, oldest first,
+verbatim). `repo` has `branch`, `baseBranch`, `branching` and `dirty` (count and first files).
+
+The description comes **without its Acceptance Criteria**: the CLI removes them, because they are for
+the reviewer, and starting from them pushes the work toward ticking boxes. Don't fetch them.
 
 ## 2. Show the context
 
-From `description`, show `## Context`, `## Implementation` and `## Scope` verbatim, or the whole
-description if it has no such headings. Leave out `## Acceptance Criteria`: those are for the
-reviewer. Loading them at the start pushes the work toward ticking boxes.
+From `issue.description`, show `## Context`, `## Implementation` and `## Scope` verbatim, or the
+whole description if it has no such headings.
 
 The comments are part of the spec. Reproduce **verbatim** any comment that asks for something to be
 built, changed or avoided, and treat it as scope. Summarize status notes in one line each. A newer
@@ -72,17 +74,16 @@ Idempotent: if the issue is already in that state, nothing is written.
 or `git restore .`, a bare `git stash`, or `git commit --amend`. Each can destroy work that isn't
 yours, for example another session's in a shared checkout. If one seems necessary, stop and ask.
 
-`branching` from `config` decides: `create` (default) creates the issue's branch as below; `ask` asks
+`repo.branching` decides: `create` (default) creates the issue's branch as below; `ask` asks
 first; `none` stays on the current branch and skips this step.
 
-If the working tree has uncommitted changes that are not part of this issue, stop and ask before
-switching branches. Never stash or discard them.
+If `repo.dirty.count` is not 0, those uncommitted changes aren't part of this issue: stop and ask
+before switching branches. Never stash or discard them.
 
-Use `branchName` from step 1 (Linear always sets it). If the branch exists, switch to it. Otherwise
-create it **from the up-to-date base**, never from what is checked out now: starting from another
-issue's branch would drag its commits into this PR. `<base>` is `baseBranch` from
-`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" config`, which already falls back to the repo's
-default branch.
+Use `issue.branchName` (Linear always sets it). If the branch exists, switch to it. Otherwise create
+it **from the up-to-date base**, never from what is checked out now: starting from another issue's
+branch would drag its commits into this PR. `<base>` is `repo.baseBranch`, which already falls back
+to the repo's default branch.
 
 ```bash
 git fetch origin "<base>" && \

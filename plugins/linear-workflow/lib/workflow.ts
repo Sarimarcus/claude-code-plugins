@@ -254,7 +254,9 @@ export type IssueDetail = IssueSummary & {
   comments: { id: string; author: string; createdAt: string; body: string }[]
 }
 
-export async function issueDetail(client: Client, id: string): Promise<IssueDetail> {
+/** The full issue. `latestComments` fetches only that many of the newest comments (the pane's need). */
+export async function issueDetail(client: Client, id: string, opts: { latestComments?: number } = {}): Promise<IssueDetail> {
+  const comments = opts.latestComments ? `comments(last:${Math.max(1, Math.floor(opts.latestComments))})` : 'comments(first:250)'
   const data = await client.query<{ issue: (RawSummary & {
     description: string | null
     team: { key: string }
@@ -267,7 +269,7 @@ export async function issueDetail(client: Client, id: string): Promise<IssueDeta
     `query($id:String!){issue(id:$id){${SUMMARY_FIELDS} description team{key} assignee{name} cycle{id number}
       subIssues: children(first:250){nodes{identifier title state{name type}}}
       attachments{nodes{title url}}
-      comments(first:250){nodes{id body createdAt user{name}}}}}`,
+      ${comments}{nodes{id body createdAt user{name}}}}}`,
     { id },
   )
   if (!data.issue) throw new LinearError(`${id}: not found`)

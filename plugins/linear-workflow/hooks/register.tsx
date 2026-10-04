@@ -135,7 +135,7 @@ function pinnedSource(id: string, by: 'command' | 'manual' | 'held' | null): Iss
 async function fetchIssue($: EngineInterface, id: string): Promise<Issue | string> {
   if (!apiKey) return 'Linear API key not found (plugin option, LINEAR_API_KEY env, or <repo>/.env)'
   try {
-    return toPaneIssue(await issueDetail(linear($), id))
+    return toPaneIssue(await issueDetail(linear($), id, { latestComments: 3 }))
   } catch (err) {
     if (err instanceof LinearError) return err.message.startsWith(id) ? err.message : `${id}: ${err.message}`
     return `${id}: ${err instanceof Error ? err.message : 'fetch failed'}`

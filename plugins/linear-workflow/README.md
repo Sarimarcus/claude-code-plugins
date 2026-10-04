@@ -43,7 +43,7 @@ the menu.
 
 ### `/linear-workflow:issue-next`
 
-Picks what to work on next. Read-only.
+Picks what to work on next. Read-only. Runs on Haiku: it only presents the CLI's ranked list.
 
 ```
 /linear-workflow:issue-next
@@ -103,7 +103,8 @@ Claude will:
 
 ### `/linear-workflow:issue-plan-cycle`
 
-Fills the active cycle from the backlog.
+Fills the active cycle from the backlog. Runs on Haiku, like `issue-next`. The other skills use your
+session's model, because they write code, judge acceptance criteria or merge.
 
 Claude will:
 - List unscheduled, unblocked Backlog and Todo issues by priority, holding back sub-issues whose
@@ -130,22 +131,35 @@ to it when the CLI can't reach Linear. It follows the same rules as the CLI:
 ## The CLI
 
 The skills call it as `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" <command>`. You can run it
-yourself from any repo. It prints JSON on stdout and one summary line on stderr, stating what it
-examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human).
+yourself from any repo. It prints compact JSON on stdout and one summary line on stderr, stating what
+it examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human).
 
-| Command | What it does |
+**Built for a small context.** Each skill step makes one call, and each call returns only the fields
+that step reads. Every tool call is a model turn that re-reads the conversation, so fewer, smaller
+calls are the main saving. The start view doesn't contain the acceptance criteria at all, so keeping
+them out of the implementer's view doesn't depend on Claude following an instruction.
+
+| One call per skill step | Returns |
+| --- | --- |
+| `start <ABC-123>` | The issue to work from (description without acceptance criteria, blockers, branch name, every comment verbatim) and the repo state (branch, base, branching setting, uncommitted files) |
+| `review [ABC-123]` | Which issue (argument, branch name, or your only started issue), its acceptance criteria, and the repo state: base branch, the issue the branch names, this branch's open PR, checks, uncommitted files |
+| `ship [ABC-123] [--pr N]` | Which issue, merge settings, and the PR verdict (as `pr-check`) |
+
+| Single steps | What it does |
 | --- | --- |
 | `config` | Repo root, current branch and the issue its name points to (`branchIssue`), resolved base branch (`baseBranch`, else origin's default) and whether you're on it, this branch's open PR, team keys, whether a key was found, `.claude/linear.json` |
 | `resolve [ABC-123\|123]` | Which issue to act on: the argument, then the branch name, then your only started issue. Exit 2 with `candidates` when it can't tell |
-| `issue <ABC-123>` | The issue with its description, parsed `acceptanceCriteria`, open blockers, sub-issues, links, branch name and every comment, verbatim |
-| `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked, each with `dueInDays` to its milestone |
+| `issue <ABC-123> [--view start\|review]` | The full issue (description, parsed `acceptanceCriteria`, blockers, sub-issues, links, branch name, every comment), or just one skill's view of it |
+| `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked, each with its `rank` and display-ready `urgency` (`overdue 3d`, `ends in 5d`…) |
 | `plan-cycle [--limit N]` | Unscheduled, unblocked backlog issues for the active cycle, ranked |
 | `transition <ABC-123> <state> [--comment TEXT \| --comment-file F]` | Idempotent status change, comment, parent roll-up (into the parent's own team states) |
 | `set-cycle <n> <ABC-123>…` | Put issues in a cycle and change nothing else |
 | `pr-check <ABC-123> [--pr N]` | Whether the issue's PR can merge: `ready`, `wait` (checks running) or `stop`, with reasons. Only PRs whose branch or title names the issue, or whose body closes it, count; `--pr` picks one of several |
 | `pr-merged <ABC-123> --pr N` | Whether that PR really landed: exit 0 only when GitHub says merged and names the merge commit |
 
-`--team KEY` overrides `teamKey` from `.claude/linear.json`.
+Global flags: `--team KEY` overrides the team key; `--pretty` indents the JSON; `--out FILE` writes
+the full JSON to a file and prints only its path. Uncommitted-file lists are capped at the first 20,
+with the total count.
 
 Ranking is priority (Urgent first, no priority last), then milestone target date, then age. A parent
 rolls up only when no sibling is unfinished, and anything not done or canceled counts as unfinished

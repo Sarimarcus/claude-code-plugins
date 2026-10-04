@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: "review-unmet-criteria"
 description: "issue-review when the change does not meet an acceptance criterion"
-expected_outcome: "Lists the unmet criterion and asks before opening a PR"
+expected_outcome: "Lists the unmet criteria and asks before opening a PR"
 tags:
   - "review"
   - "guardrail"
@@ -18,10 +18,10 @@ execution:
 context:
   scaffold_script: "scaffold.sh"
 graders:
-  - name: "asks-the-cli-issue"
+  - name: "asks-the-cli-review"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+issue"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+review"
     min: 1
   - name: "never-writes-linear"
     type: "tool_used"
