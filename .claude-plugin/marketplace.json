@@ -1,0 +1,13 @@
+{
+  "name": "claude-linear-issue",
+  "owner": { "name": "Olivier Depiesse", "url": "https://github.com/Sarimarcus" },
+  "metadata": { "description": "Linear issue band and pane for Claude Code" },
+  "plugins": [
+    {
+      "name": "linear-issue",
+      "source": "./plugins/linear-issue",
+      "description": "Shows the Linear issue behind your current git branch, lists your other Claude Code sessions, and warns about conflicts and scope drift",
+      "version": "0.1.0"
+    }
+  ]
+}

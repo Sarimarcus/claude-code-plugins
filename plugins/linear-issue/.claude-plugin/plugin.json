@@ -1,0 +1,55 @@
+{
+  "name": "linear-issue",
+  "version": "0.1.0",
+  "description": "Shows the Linear issue behind your current git branch in a band and a pane, lists the other Claude Code sessions and their issues, and warns about conflicts and scope drift",
+  "author": { "name": "Olivier Depiesse", "url": "https://github.com/Sarimarcus" },
+  "homepage": "https://github.com/Sarimarcus/claude-linear-issue",
+  "repository": "https://github.com/Sarimarcus/claude-linear-issue",
+  "license": "MIT",
+  "keywords": ["linear", "issue", "git", "branch", "status", "sessions"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "linearApiKey": {
+      "type": "string",
+      "title": "Linear API key",
+      "description": "Personal API key (Linear → Settings → Security & access). Left empty, the LINEAR_API_KEY environment variable is used, then LINEAR_API_KEY in <repo>/.env.",
+      "sensitive": true,
+      "required": false
+    },
+    "teamKeys": {
+      "type": "string",
+      "title": "Team keys",
+      "description": "Comma-separated Linear team keys to look for in branch names (e.g. ENG, OPS). Left empty, your workspace's team keys are fetched from Linear.",
+      "default": "",
+      "required": false
+    },
+    "registryFile": {
+      "type": "string",
+      "title": "Sub-project registry",
+      "description": "Optional JSON file at the repo root listing sub-projects ({\"sites\":[{\"key\",\"path\",\"active\"}]}). When present, issue labels that match a key define the issue's scope, and edits outside it raise a drift toast.",
+      "default": "sites.json",
+      "required": false
+    },
+    "pinCommand": {
+      "type": "string",
+      "title": "Pin command",
+      "description": "Name of one of your slash commands (without /) whose first argument is an issue id, e.g. issue-start. Running it pins that issue to the session.",
+      "default": "",
+      "required": false
+    },
+    "pollMinutes": {
+      "type": "number",
+      "title": "Refresh interval (minutes)",
+      "description": "How often the issue is re-fetched from Linear.",
+      "default": 5,
+      "required": false
+    },
+    "showOtherSessions": {
+      "type": "boolean",
+      "title": "Show other sessions",
+      "description": "Share this session's issue with your other local Claude Code sessions (via ~/.claude/linear-issue/sessions) and list theirs in the band.",
+      "default": true,
+      "required": false
+    }
+  }
+}
