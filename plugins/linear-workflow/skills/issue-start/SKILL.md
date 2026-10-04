@@ -50,10 +50,14 @@ If the issue has open blockers, list them and ask `Continue anyway? [y/N]`. Go o
 ## 4. Branch
 
 Use the `gitBranchName` Linear returned (fall back to `<abc-123>-<slugified-title>` if it is missing).
-Base it on the configured `baseBranch` (default: the repo's default branch):
+If the branch already exists, switch to it. Otherwise create it **from the up-to-date base**, never
+from whatever is checked out now. Starting from another issue's branch would drag its commits into
+this PR. `<base>` is the configured `baseBranch`, else the repo's default branch
+(`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`, or `main`):
 
 ```bash
-git switch "<branch>" 2>/dev/null || git switch -c "<branch>"
+git fetch origin "<base>" && \
+{ git switch "<branch>" 2>/dev/null || git switch -c "<branch>" "origin/<base>"; }
 ```
 
 If the working tree has uncommitted changes that are not part of this issue, stop and ask before

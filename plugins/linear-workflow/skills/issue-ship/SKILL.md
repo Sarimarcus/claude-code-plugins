@@ -19,7 +19,7 @@ Linear. Read `.claude/linear.json` (`baseBranch`, `mergeMethod`, `deleteBranch`)
 ## 2. Find the PR and check that it can land
 
 ```bash
-gh pr list --state open --search "ABC-123 in:title,body" --json number,url,headRefName,isDraft,mergeable,reviewDecision
+gh pr list --state open --search "ABC-123 in:title,body" --json number,url,headRefName,headRefOid,isDraft,mergeable,reviewDecision
 ```
 
 Fall back to `gh pr view <current branch>`. Then:
@@ -40,9 +40,14 @@ Print `Merging <PR url> — ABC-123 <title>.`, then use `mergeMethod` (default `
 - `merge` / `squash` / `rebase` →
   `gh pr merge <number> --<method> [--delete-branch]`. If the repo doesn't allow that method, gh
   says so. Ask which allowed method to use instead.
-- `local` → merge locally so your own `pre-push` hooks run:
+- `local` → merge locally so your own `pre-push` hooks run. Merge the PR head **as GitHub has it**,
+  not your local branch, because commits made on GitHub (e.g. an accepted review suggestion) only exist there.
+  Check that `origin/<head>` matches the PR's `headRefOid` before merging. If it doesn't, stop.
   ```bash
-  git switch <base> && git pull --ff-only && git merge --no-ff <head> -m "Merge: <title> (ABC-123)" && git push
+  git fetch origin "<base>" "<head>" && \
+  test "$(git rev-parse "origin/<head>")" = "<headRefOid>" && \
+  git switch "<base>" && git pull --ff-only && \
+  git merge --no-ff "origin/<head>" -m "Merge: <title> (ABC-123)" && git push
   ```
   If this fails, stop and report it. Never force-push. A diverged base is reported as that, not as a
   merge conflict.

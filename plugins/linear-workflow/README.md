@@ -30,7 +30,8 @@ the menu.
 
 1. Connect Linear's MCP server (the Linear connector on claude.ai, or
    `claude mcp add --transport http linear https://mcp.linear.app/mcp`).
-2. Give the mod a Linear API key: `/config` → **linear-workflow** → *Linear API key*.
+2. Give the mod a Linear API key: `export LINEAR_API_KEY=lin_api_…` in your shell profile, or add a
+   `LINEAR_API_KEY=` line to your repo's (git-ignored) `.env`.
 3. Run `/linear-workflow:issue-next`.
 
 ## Skills
@@ -122,16 +123,19 @@ linear-manager to file a bug for…"). It:
 ## The mod
 
 ```
-◆ ENG-2919 In Progress · High · Core affiliate link builders
-root branch · scope: web · parent ENG-2900          Details  Hide
-also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
+── Linear ─────────────────────────────────────────────────────────
+◆ ENG-2919  In Progress · High
+  Core affiliate link builders
+  root branch · scope: web · parent ENG-2900            Details  Hide
+  sessions  ENG-2748 In Review (eng-2748)  ·  ⚠  ENG-2912 In Progress (main)
 ```
 
 - **Band above the prompt**: the current issue's id, state, priority, title, scope and parent.
 - **Details pane** (`/linear`): description, sub-issues, links, latest comments, and *Open in Linear*.
-- **Issue from your branch**: `alex/eng-2919-link-builders` → `ENG-2919`. Running `issue-start`
-  also pins the issue to the session.
-- **Other sessions** (`also:`): every Claude Code session on your machine that runs the plugin,
+- **Issue from your branch**: `alex/eng-2919-link-builders` → `ENG-2919`. Typing
+  `/linear-workflow:issue-start ENG-123` (or `123` when you use a single team key) also pins the
+  issue to the session. A start handed over from `issue-next` relies on the branch name instead.
+- **Other sessions** (`sessions` row): every Claude Code session on your machine that runs the plugin,
   with its issue and checkout (`main` or the worktree name).
 - **Conflict warnings**: a toast and a red ⚠ when another session in the *same checkout* is on a
   *different* issue (you share one branch and one working tree), or two sessions are on the same issue.
@@ -160,11 +164,11 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 
 ## Configuration
 
-### Plugin settings (`/config` → linear-workflow)
+### Plugin settings
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `linearApiKey` | — | Linear API key, stored as a secret. Falls back to `LINEAR_API_KEY` in the environment, then in `<repo>/.env` |
+| `linearApiKey` | — | Linear API key, stored as a secret (secret options are not shown in `/config`). If unset: `LINEAR_API_KEY` in the environment, then in `<repo>/.env` |
 | `teamKeys` | *(auto)* | Team keys to find in branch names. If empty: `teamKey` from `.claude/linear.json`, else your workspace's keys |
 | `pinCommand` | `issue-start` | Skill whose first argument pins an issue to the session. Empty disables it |
 | `pollMinutes` | `5` | How often the mod refreshes the issue |
@@ -207,7 +211,8 @@ label is scoped to everything.
 - `issue-review`, `issue-ship` and `issue-plan-cycle` can't be started by Claude on its own. You
   have to type them.
 - Typing one authorizes the push or merge for **that issue only**.
-- Nothing force-pushes, pushes the base branch directly, stashes, or discards changes.
+- Nothing force-pushes, stashes, or discards changes. The only push to the base branch is the
+  merge itself, when `issue-ship` uses `mergeMethod: local`.
 - `issue-ship` checks GitHub before writing to Linear, so a merge that failed is never reported as done.
 
 ## Best practices
@@ -254,8 +259,8 @@ allow your `mergeMethod`, `issue-ship` asks which one to use.
 - The skills follow GitHub's PR model through `gh`. GitLab and Bitbucket aren't supported.
 - The mod sees branch switches made through Claude Code, but not ones made in your own terminal.
   Use `/linear clear` after those.
-- Evals check the skills' guardrails, but no automated end-to-end test runs against a real Linear
-  workspace or GitHub repo.
+- The mod's logic has unit tests. The skills and the agent have no automated tests yet, and nothing
+  runs end to end against a real Linear workspace or GitHub repo.
 
 ## Development
 
@@ -263,7 +268,6 @@ allow your `mergeMethod`, `issue-ship` asks which one to use.
 claude --plugin-dir .      # from this folder: load from source, hot-reloads on save
 claude plugin validate .
 claude plugin test .       # mod unit tests
-claude plugin eval .       # skill and agent evals
 ```
 
 The engine generates `.claude-plugin/types/` when the mod loads. After that, `tsc -p .` type-checks it.

@@ -119,6 +119,12 @@ async function resolveSource($: EngineInterface): Promise<IssueSource | null> {
     return fromBranch
   }
 
+  // This session switched back to the held issue's branch: it is ours again.
+  if (pinned && pinnedBy === 'held' && own && fromBranch?.id === pinned) {
+    await setPin($, null, null)
+    return fromBranch
+  }
+
   const release =
     pinnedBy === 'manual' ? fromBranch !== null && fromBranch.id !== pinned : fromBranch?.id !== pinned
   if (pinned && branchMoved && release) {
@@ -135,7 +141,10 @@ function pinnedSource(
   by: 'command' | 'manual' | 'held' | null,
 ): IssueSource | null {
   const source = pickSource(rootBranch, siteBranches, id, teamKeys)
-  return source && by === 'held' ? { ...source, detail: 'held: another session moved the branch' } : source
+  if (!source) return source
+  if (by === 'held') return { ...source, detail: 'held: another session moved the branch' }
+  if (by === 'command') return { ...source, detail: `pinned by /${config.pinCommand}` }
+  return source
 }
 
 async function fetchIssue($: EngineInterface, id: string): Promise<Issue | string> {
@@ -212,6 +221,7 @@ async function syncSessions($: EngineInterface): Promise<void> {
 }
 
 async function refreshNow($: EngineInterface, force: boolean): Promise<void> {
+  if (teamKeys.length === 0 && apiKey) teamKeys = await loadTeamKeys($)
   const source = await resolveSource($)
   const previous = await read($, sourceAtom)
   if (JSON.stringify(previous) !== JSON.stringify(source)) await update($, sourceAtom, () => source)
@@ -324,7 +334,9 @@ export const register: Register = (on, options) => {
 
   on('command.run', async ($, e, next) => {
     const name = String(e.command).split(':').pop()
-    const id = config.pinCommand && name === config.pinCommand ? idFromText(e.args) : undefined
+    const bare = /^\s*#?(\d+)\s*$/.exec(e.args)?.[1]
+    const fromArgs = idFromText(e.args) ?? (bare && teamKeys.length === 1 ? `${teamKeys[0]}-${bare}` : undefined)
+    const id = config.pinCommand && name === config.pinCommand ? fromArgs : undefined
     if (id) {
       await setPin($, id, 'command')
       await refresh($, true)
@@ -520,7 +532,7 @@ export const register: Register = (on, options) => {
       </Box>
     )
 
-    if (!issue) {
+    if (!issue || issue.identifier !== source?.id) {
       return (
         <Box flexDirection="column" width={width}>
           <Text dimColor>{source ? `${source.id}: ${error ?? 'loading…'}` : 'No Linear issue on this branch. /linear ABC-123 pins one.'}</Text>
