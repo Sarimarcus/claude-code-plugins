@@ -16,7 +16,7 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 
 | Plugin | Kind | What it does |
 | --- | --- | --- |
-| [linear-issue-mod](plugins/linear-issue-mod) | mod | Shows the Linear issue behind your current git branch above the prompt, lists your other Claude Code sessions and their issues, and warns about conflicts and scope drift |
+| [linear-issue-mod](plugins/linear-issue-mod) | mod + commands + agent | Linear in Claude Code: the current issue above the prompt, your other sessions and conflict warnings, and `/issue-*` commands from start to merged PR |
 
 ## Layout
 

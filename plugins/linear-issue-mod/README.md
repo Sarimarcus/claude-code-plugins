@@ -27,6 +27,14 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
   sub-project key define the issue's scope. Editing files outside that scope raises a toast.
 - A toast when the issue changes state in Linear.
 
+It also includes an issue workflow, from picking the issue to the merged PR:
+
+```
+/issue-next → /issue-start ENG-123 → (work) → /issue-review → /issue-ship
+```
+
+The workflow uses a `linear-manager` subagent, so issue payloads stay out of your main conversation.
+
 ## Install
 
 ```
@@ -37,6 +45,13 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 Requires a Claude Code version with mods (plugin hooks modules in `hooks/hooks.json` → `modules`).
 Developed and tested on 2.1.289.
 
+The band and pane talk to Linear's API directly and need an API key (below). The `/issue-*`
+commands and `linear-manager` need two more things:
+
+- **Linear MCP server**: the Linear connector on claude.ai, or
+  `claude mcp add --transport http linear https://mcp.linear.app/mcp`
+- **GitHub CLI** (`gh`), logged in, for `/issue-review` and `/issue-ship`
+
 Provide a Linear personal API key (Linear → Settings → Security & access) in one of
 three ways, checked in this order:
 
@@ -45,6 +60,25 @@ three ways, checked in this order:
 3. a `LINEAR_API_KEY=` line in the `.env` at your repo root.
 
 ## Commands
+
+### Workflow
+
+| Command | What it does |
+| --- | --- |
+| `/issue-next` | Ranks the active cycle's unblocked issues (priority, then milestone date, then age) and offers to start the top one |
+| `/issue-start ENG-123` | Moves the issue to In Progress, shows its context and comments, creates Linear's branch for it, and starts work |
+| `/issue-review [ENG-123]` | Runs your checks, commits, pushes the branch, opens a PR with `Closes ENG-123`, and moves the issue to In Review |
+| `/issue-ship [ENG-123]` | Checks the PR (not a draft, no conflicts, checks green), merges it, verifies the merge, and moves the issue to Done |
+| `/issue-plan-cycle` | Lists unscheduled, unblocked backlog issues; you choose which to add to the active cycle |
+
+Without an id, `/issue-review` and `/issue-ship` use the session's issue, then the branch name.
+Running `/issue-review` or `/issue-ship` yourself authorizes the push or merge for that one issue.
+Nothing ever force-pushes or pushes the base branch directly.
+
+Every command can also be run with the plugin's namespace (`/linear-issue-mod:issue-start`).
+That helps when your project defines commands with the same names.
+
+### Band and pane
 
 | Command | What it does |
 | --- | --- |
@@ -63,9 +97,31 @@ Set from the `/config` menu or under `pluginConfigs.linear-issue-mod` in setting
 | `linearApiKey` | — | Linear API key (secret) |
 | `teamKeys` | *(auto)* | Comma-separated team keys to find in branch names. Left empty, your workspace's keys are fetched from Linear. |
 | `registryFile` | `sites.json` | Sub-project registry used for scope and drift. If the file is missing, those features are off. |
-| `pinCommand` | — | One of your slash commands (without `/`) whose first argument is an issue id, e.g. `issue-start`. Running it pins that issue. |
+| `pinCommand` | `issue-start` | Slash command (without `/`) whose first argument is an issue id; running it pins that issue to the session. Empty disables it. |
 | `pollMinutes` | `5` | How often the issue is refreshed |
 | `showOtherSessions` | `true` | Share this session's issue with your other sessions and list theirs |
+
+### Project settings for the workflow
+
+Optional: put a `.claude/linear.json` in your repo. Every field is optional. A missing value is
+inferred, or the command asks once.
+
+```json
+{
+  "team": "Engineering",
+  "teamKey": "ENG",
+  "project": "Website",
+  "assignee": "me",
+  "baseBranch": "main",
+  "checks": ["npm run build", "npm test"],
+  "mergeMethod": "squash",
+  "deleteBranch": true
+}
+```
+
+`mergeMethod` is `merge` (default), `squash`, `rebase`, or `local`. `local` merges with
+`git merge --no-ff` and pushes, so your own `pre-push` hooks run. A copy of this file is in
+[`linear.example.json`](linear.example.json).
 
 ### Sub-project registry
 

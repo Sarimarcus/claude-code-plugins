@@ -1,12 +1,24 @@
 {
   "name": "linear-issue-mod",
   "version": "0.1.0",
-  "description": "Claude Code mod: shows the Linear issue behind your current git branch in a band and a pane, lists the other Claude Code sessions and their issues, and warns about conflicts and scope drift",
-  "author": { "name": "Olivier Depiesse", "url": "https://github.com/Sarimarcus" },
+  "description": "Claude Code mod for Linear: the current issue above the prompt, your other sessions and their issues, conflict and scope-drift warnings, plus /issue-start, /issue-review, /issue-ship, /issue-next, /issue-plan-cycle and a linear-manager agent",
+  "author": {
+    "name": "Olivier Depiesse",
+    "url": "https://github.com/Sarimarcus"
+  },
   "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/linear-issue-mod",
   "repository": "https://github.com/Sarimarcus/claude-code-plugins",
   "license": "MIT",
-  "keywords": ["linear", "issue", "git", "branch", "status", "sessions"],
+  "keywords": [
+    "linear",
+    "issue",
+    "git",
+    "branch",
+    "pull-request",
+    "workflow",
+    "sessions",
+    "mod"
+  ],
   "types": "./types/index.d.ts",
   "userConfig": {
     "linearApiKey": {
@@ -33,8 +45,8 @@
     "pinCommand": {
       "type": "string",
       "title": "Pin command",
-      "description": "Name of one of your slash commands (without /) whose first argument is an issue id, e.g. issue-start. Running it pins that issue to the session.",
-      "default": "",
+      "description": "Slash command (without /) whose first argument is an issue id; running it pins that issue to the session. Defaults to the bundled /issue-start. Empty disables.",
+      "default": "issue-start",
       "required": false
     },
     "pollMinutes": {

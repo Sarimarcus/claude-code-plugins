@@ -11,7 +11,7 @@
     {
       "name": "linear-issue-mod",
       "source": "./plugins/linear-issue-mod",
-      "description": "Shows the Linear issue behind your current git branch, lists your other Claude Code sessions, and warns about conflicts and scope drift",
+      "description": "Linear in Claude Code: the current issue above the prompt, other sessions and conflict warnings, and /issue-* commands from start to merged PR",
       "version": "0.1.0"
     }
   ]

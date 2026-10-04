@@ -1,0 +1,13 @@
+{
+  "team": "Engineering",
+  "teamKey": "ENG",
+  "project": "Website",
+  "assignee": "me",
+  "baseBranch": "main",
+  "checks": [
+    "npm run build",
+    "npm test"
+  ],
+  "mergeMethod": "squash",
+  "deleteBranch": true
+}

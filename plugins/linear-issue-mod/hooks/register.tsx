@@ -42,7 +42,7 @@ let config = {
   linearApiKey: '',
   teamKeys: '',
   registryFile: 'sites.json',
-  pinCommand: '',
+  pinCommand: 'issue-start',
   pollMinutes: 5,
   showOtherSessions: true,
 }
@@ -263,7 +263,7 @@ export const register: Register = (on, options) => {
     linearApiKey: String(options.linearApiKey ?? ''),
     teamKeys: String(options.teamKeys ?? ''),
     registryFile: String(options.registryFile ?? 'sites.json'),
-    pinCommand: String(options.pinCommand ?? '').replace(/^\//, ''),
+    pinCommand: String(options.pinCommand ?? 'issue-start').replace(/^\//, ''),
     pollMinutes: Math.max(1, Number(options.pollMinutes ?? 5) || 5),
     showOtherSessions: options.showOtherSessions !== false,
   }
@@ -313,7 +313,8 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', async ($, e, next) => {
-    const id = config.pinCommand && e.command === config.pinCommand ? idFromText(e.args) : undefined
+    const name = String(e.command).split(':').pop()
+    const id = config.pinCommand && name === config.pinCommand ? idFromText(e.args) : undefined
     if (id) {
       await setPin($, id, 'command')
       await refresh($, true)

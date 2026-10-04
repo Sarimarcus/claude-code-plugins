@@ -73,7 +73,7 @@ describe('drift', () => {
   test('edit outside scope is drift', async () => {
     expect(driftSite('/f/apps/api/src/a.astro', PATHS, ['web'])).toBe('api')
   })
-  test('edit inside scope, at factory root, or unscoped is not', async () => {
+  test('edit inside scope, at repo root, or unscoped is not', async () => {
     expect(driftSite('/f/apps/web/src/a.astro', PATHS, ['web'])).toBe(undefined)
     expect(driftSite('/f/scripts/x.mjs', PATHS, ['web'])).toBe(undefined)
     expect(driftSite('/f/apps/api/a', PATHS, [])).toBe(undefined)
@@ -95,7 +95,7 @@ describe('sessions', () => {
 
   test('checkout commands', async () => {
     expect(isCheckout('git checkout alex/eng-1-x')).toBe(true)
-    expect(isCheckout('git -C "$FACTORY/sites/a" switch -c alex/eng-1-x')).toBe(true)
+    expect(isCheckout('git -C "$REPO/apps/a" switch -c alex/eng-1-x')).toBe(true)
     expect(isCheckout('cd x && git checkout -b eng-2')).toBe(true)
     expect(isCheckout('git checkout -- src/a.ts')).toBe(false)
     expect(isCheckout('git status && git log')).toBe(false)
