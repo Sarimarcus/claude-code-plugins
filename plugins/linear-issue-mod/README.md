@@ -1,6 +1,7 @@
-# linear-issue — a Claude Code plugin
+# linear-issue-mod — a Claude Code mod
 
-Shows the Linear issue you're working on right above the Claude Code prompt, so the issue for
+A Claude Code mod (a plugin of live hooks that draws its own UI) that shows the Linear issue
+you're working on right above the prompt, so the issue for
 the session is always in view.
 
 ```
@@ -15,7 +16,7 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 - **Issue from your branch**: `alex/eng-2919-link-builders` → `ENG-2919`. If the root repo is
   on a branch without an issue id (e.g. `main`), it checks the branches of the sub-projects in the
   registry (see below).
-- **Other sessions**: every Claude Code session on the machine that runs the plugin appears on the
+- **Other sessions**: every Claude Code session on the machine that runs the mod appears on the
   `also:` row, with its issue and checkout (`main` or the worktree name).
 - **Conflict warnings**: a toast and a red ⚠ when another session in the *same checkout* works a
   *different* issue (you share one branch and one working tree), or when two sessions take the same issue.
@@ -30,16 +31,16 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 
 ```
 /plugin marketplace add Sarimarcus/claude-code-plugins
-/plugin install linear-issue@sarimarcus
+/plugin install linear-issue-mod@sarimarcus
 ```
 
-Requires a Claude Code version with plugin hooks modules (`hooks/hooks.json` → `modules`).
+Requires a Claude Code version with mods (plugin hooks modules in `hooks/hooks.json` → `modules`).
 Developed and tested on 2.1.289.
 
 Provide a Linear personal API key (Linear → Settings → Security & access) in one of
 three ways, checked in this order:
 
-1. the plugin's **Linear API key** option (stored as a secret),
+1. the mod's **Linear API key** option (stored as a secret),
 2. the `LINEAR_API_KEY` environment variable,
 3. a `LINEAR_API_KEY=` line in the `.env` at your repo root.
 
@@ -55,7 +56,7 @@ three ways, checked in this order:
 
 ## Options
 
-Set from the `/config` menu or under `pluginConfigs.linear-issue` in settings.
+Set from the `/config` menu or under `pluginConfigs.linear-issue-mod` in settings.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -83,7 +84,7 @@ An issue with no matching label is scoped to everything.
 
 ## How the session list works
 
-Each session writes a small JSON file to `~/.claude/linear-issue/sessions/<session-id>.json` every
+Each session writes a small JSON file to `~/.claude/linear-issue-mod/sessions/<session-id>.json` every
 minute. The file holds the session's checkout path, issue id, title and state, nothing else. A
 session drops off the list 3 minutes after its last update. Its file is deleted when the session
 ends, and files left by a crash are cleaned up after a day. Everything stays on your machine. The
@@ -97,8 +98,8 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The engine generates `.claude-plugin/types/` when the plugin loads. After that, `tsc -p .`
-type-checks the plugin.
+The engine generates `.claude-plugin/types/` when the mod loads. After that, `tsc -p .`
+type-checks it.
 
 ## License
 

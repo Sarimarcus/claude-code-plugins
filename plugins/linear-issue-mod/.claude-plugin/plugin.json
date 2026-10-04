@@ -1,9 +1,9 @@
 {
-  "name": "linear-issue",
+  "name": "linear-issue-mod",
   "version": "0.1.0",
-  "description": "Shows the Linear issue behind your current git branch in a band and a pane, lists the other Claude Code sessions and their issues, and warns about conflicts and scope drift",
+  "description": "Claude Code mod: shows the Linear issue behind your current git branch in a band and a pane, lists the other Claude Code sessions and their issues, and warns about conflicts and scope drift",
   "author": { "name": "Olivier Depiesse", "url": "https://github.com/Sarimarcus" },
-  "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/linear-issue",
+  "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/linear-issue-mod",
   "repository": "https://github.com/Sarimarcus/claude-code-plugins",
   "license": "MIT",
   "keywords": ["linear", "issue", "git", "branch", "status", "sessions"],
@@ -47,7 +47,7 @@
     "showOtherSessions": {
       "type": "boolean",
       "title": "Show other sessions",
-      "description": "Share this session's issue with your other local Claude Code sessions (via ~/.claude/linear-issue/sessions) and list theirs in the band.",
+      "description": "Share this session's issue with your other local Claude Code sessions (via ~/.claude/linear-issue-mod/sessions) and list theirs in the band.",
       "default": true,
       "required": false
     }

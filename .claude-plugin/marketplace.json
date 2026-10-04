@@ -9,8 +9,8 @@
   },
   "plugins": [
     {
-      "name": "linear-issue",
-      "source": "./plugins/linear-issue",
+      "name": "linear-issue-mod",
+      "source": "./plugins/linear-issue-mod",
       "description": "Shows the Linear issue behind your current git branch, lists your other Claude Code sessions, and warns about conflicts and scope drift",
       "version": "0.1.0"
     }

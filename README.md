@@ -1,6 +1,6 @@
 # Claude Code plugins
 
-Plugins for [Claude Code](https://claude.com/claude-code) by Olivier Depiesse.
+Plugins and mods for [Claude Code](https://claude.com/claude-code) by Olivier Depiesse.
 
 ## Install
 
@@ -14,9 +14,9 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 
 ## Plugins
 
-| Plugin | What it does |
-| --- | --- |
-| [linear-issue](plugins/linear-issue) | Shows the Linear issue behind your current git branch above the prompt, lists your other Claude Code sessions and their issues, and warns about conflicts and scope drift |
+| Plugin | Kind | What it does |
+| --- | --- | --- |
+| [linear-issue-mod](plugins/linear-issue-mod) | mod | Shows the Linear issue behind your current git branch above the prompt, lists your other Claude Code sessions and their issues, and warns about conflicts and scope drift |
 
 ## Layout
 
