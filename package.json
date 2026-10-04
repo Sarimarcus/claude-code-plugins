@@ -1,0 +1,19 @@
+{
+  "name": "claude-code-plugins",
+  "private": true,
+  "type": "module",
+  "description": "Development tooling for the plugins in this marketplace. Not part of any plugin; users install none of it.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc -p plugins/linear-workflow && tsc -p plugins/linear-workflow/bin",
+    "test": "cd plugins/linear-workflow && claude plugin test .",
+    "eval": "cd plugins/linear-workflow && rm -rf evals/results/latest; claude plugin eval . -j 4 --ablation none --allow-tools Bash --scaffold --trust-plugin --no-publish --output-dir evals/results/latest; node evals/report.mjs evals/results/latest/aggregate-result.json",
+    "eval:report": "node plugins/linear-workflow/evals/report.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

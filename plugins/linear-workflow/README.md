@@ -348,8 +348,15 @@ allow your `mergeMethod`, `issue-ship` asks which one to use.
 claude --plugin-dir .      # from this folder: load from source, hot-reloads on save
 claude plugin validate .
 claude plugin test .       # unit tests (lib/ and the mod)
-npm install && npm run typecheck   # dev only: mod + lib, then CLI + lib
-npm run eval                       # skill evals, then writes evals/RESULTS.md
+```
+
+Dev tooling lives at the repo root, outside the plugin, so installing the plugin pulls in none of it:
+
+```
+npm install                # at the repo root: TypeScript and Node types
+npm run typecheck          # mod + lib, then CLI + lib
+npm test                   # same as claude plugin test
+npm run eval               # skill evals, then writes evals/RESULTS.md
 ```
 
 **Evals** (`evals/`) check the skills' guardrails: `issue-ship` stops on a missing, draft or failing PR

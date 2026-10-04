@@ -23,6 +23,9 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 Each plugin lives in `plugins/<name>/` with its own README and CHANGELOG, and has an entry in
 `.claude-plugin/marketplace.json`.
 
+Dev tooling (`package.json`: TypeScript, type-check, test and eval scripts) sits at the repo root,
+outside every plugin, so installing a plugin never pulls it in.
+
 ## License
 
 MIT
