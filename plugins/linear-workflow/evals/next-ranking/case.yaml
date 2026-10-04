@@ -1,0 +1,49 @@
+schema_version: "1.1"
+name: "next-ranking"
+description: "issue-next renders the CLI queue in order with CLI-computed urgency"
+expected_outcome: "Keeps the given order, uses dueInDays, no descriptions"
+tags:
+  - "next"
+runs: 3
+execution:
+  prompt: "/linear-workflow:issue-next"
+  max_turns: 6
+  timeout_seconds: 300
+  allowed_tools:
+    - "Bash"
+    - "Read"
+  env:
+    EVAL_LINEAR_WORKFLOW_FIXTURES: ".lw"
+  append_system_prompt: "For this evaluation, after showing the list and the start question, stop: assume the user answered n."
+context:
+  scaffold_script: "scaffold.sh"
+graders:
+  - name: "asks-the-cli-queue"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "linear-workflow\\.ts\\\\?\\\"?\\s+queue"
+    min: 1
+  - name: "never-writes-linear"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "\\b(transition|set-cycle)\\b"
+    min: 0
+    max: 0
+  - name: "keeps-cli-order"
+    type: "regex"
+    pattern: "(?s)ENG-7.*ENG-3.*ENG-9"
+    target: "last_message"
+  - name: "uses-dueInDays"
+    type: "regex"
+    pattern: "(?s)overdue 3d.*ends in 5d"
+    target: "last_message"
+  - name: "no-descriptions"
+    type: "regex"
+    pattern: "Users asked for a dark theme"
+    match: "not_contains"
+    target: "last_message"
+  - name: "never-starts-on-its-own"
+    type: "tool_used"
+    tool: "Skill"
+    min: 0
+    max: 0

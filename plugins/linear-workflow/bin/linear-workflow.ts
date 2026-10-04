@@ -3,7 +3,7 @@
 // line on stderr, exit 0 = ok, 1 = error or bad input, 2 = refused (needs a human).
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 
 import { createClient, LinearError } from '../lib/linear.ts'
 import { findRoot, idFromBranch, resolveApiKey } from '../lib/logic.ts'
@@ -128,7 +128,22 @@ function prNumber(flags: Record<string, string | true>): number | undefined {
   return n
 }
 
-async function main(argv: string[]): Promise<{ out: unknown; summary: string; code?: number }> {
+type Outcome = { out: unknown; summary: string; code?: number }
+
+/**
+ * Eval fixture mode: answer each command from `<dir>/<command>.json` ({ out, summary, code }) and
+ * log the call to `<dir>/calls.log`, so evals exercise the skills without Linear or GitHub.
+ */
+function fromFixture(dir: string, argv: string[]): Outcome {
+  appendFileSync(`${dir}/calls.log`, `${argv.join(' ')}\n`)
+  const file = `${dir}/${argv[0] ?? 'none'}.json`
+  if (!existsSync(file)) throw new Error(`No fixture for "${argv[0] ?? ''}" in ${dir}`)
+  return JSON.parse(readFileSync(file, 'utf8')) as Outcome
+}
+
+async function main(argv: string[]): Promise<Outcome> {
+  const fixtures = process.env.EVAL_LINEAR_WORKFLOW_FIXTURES
+  if (fixtures) return fromFixture(fixtures, argv)
   const [command, ...rest] = argv
   const { positional, flags } = parseArgs(rest)
   const ctx = await context(flags)

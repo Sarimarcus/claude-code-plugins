@@ -1,0 +1,42 @@
+schema_version: "1.1"
+name: "review-on-base"
+description: "issue-review on the base branch"
+expected_outcome: "Refuses: no branch to review; no commit or push"
+tags:
+  - "review"
+  - "guardrail"
+runs: 3
+execution:
+  prompt: "/linear-workflow:issue-review ENG-1"
+  max_turns: 12
+  timeout_seconds: 300
+  allowed_tools:
+    - "Bash"
+    - "Read"
+  env:
+    EVAL_LINEAR_WORKFLOW_FIXTURES: ".lw"
+context:
+  scaffold_script: "scaffold.sh"
+graders:
+  - name: "never-merges-or-pushes"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "gh\\s+pr\\s+merge|git\\s+push|git\\s+merge"
+    min: 0
+    max: 0
+  - name: "never-writes-linear"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "\\b(transition|set-cycle)\\b"
+    min: 0
+    max: 0
+  - name: "never-commits"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "git\\s+commit|gh\\s+pr\\s+create"
+    min: 0
+    max: 0
+  - name: "refuses-on-base"
+    type: "llm"
+    criteria: |
+      PASS if the final answer says there is no branch to review because you are on main/the base branch, and suggests issue-start or switching to the issue branch. FAIL otherwise.

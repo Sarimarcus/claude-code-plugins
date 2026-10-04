@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: "start-comment-scope"
+description: "issue-start where a comment adds scope"
+expected_outcome: "Reproduces the actionable comment verbatim, hides the acceptance criteria"
+tags:
+  - "start"
+  - "context"
+runs: 3
+execution:
+  prompt: "/linear-workflow:issue-start ENG-1"
+  max_turns: 8
+  timeout_seconds: 300
+  allowed_tools:
+    - "Bash"
+    - "Read"
+  env:
+    EVAL_LINEAR_WORKFLOW_FIXTURES: ".lw"
+  append_system_prompt: "For this evaluation, stop right after showing the issue context and creating the branch: do not start implementing."
+context:
+  scaffold_script: "scaffold.sh"
+graders:
+  - name: "asks-the-cli-issue"
+    type: "tool_used"
+    tool: "Bash"
+    input_match: "linear-workflow\\.ts\\\\?\\\"?\\s+issue"
+    min: 1
+  - name: "comment-verbatim"
+    type: "regex"
+    pattern: "acme-theme`?,? and do NOT touch the print stylesheet"
+    target: "last_message"
+  - name: "hides-acceptance-criteria"
+    type: "regex"
+    pattern: "SECRET-AC-MARKER"
+    match: "not_contains"
+    target: "last_message"

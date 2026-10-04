@@ -298,7 +298,8 @@ allow your `mergeMethod`, `issue-ship` asks which one to use.
 - The mod sees branch switches made through Claude Code, but not ones made in your own terminal.
   Use `/linear clear` after those.
 - The shared logic (ranking, roll-up, state matching, PR verdicts, mod helpers) has unit tests,
-  including transitions against a fake Linear API. Nothing runs end to end against a real Linear
+  including transitions against a fake Linear API. The skills have evals that check they follow the
+  CLI's verdicts, run against canned CLI answers. Nothing runs end to end against a real Linear
   workspace or GitHub repo.
 
 ## Development
@@ -308,7 +309,17 @@ claude --plugin-dir .      # from this folder: load from source, hot-reloads on 
 claude plugin validate .
 claude plugin test .       # unit tests (lib/ and the mod)
 npm install && npm run typecheck   # dev only: mod + lib, then CLI + lib
+claude plugin eval . --scaffold --allow-tools Bash --ablation none   # skill evals
 ```
+
+**Evals** (`evals/`) check the skills' guardrails: `issue-ship` stops on a missing, draft or failing PR
+and asks when several PRs or running checks are involved; `issue-review` refuses on the base branch
+and never stages unrelated files; `issue-start` never stashes or discards a dirty tree, quotes
+actionable comments verbatim and hides acceptance criteria; `issue-next` keeps the CLI's order and
+urgency. Each case's `scaffold.sh` builds a git repo and canned CLI answers in `.lw/`; with
+`EVAL_LINEAR_WORKFLOW_FIXTURES` set, the CLI answers from there (and logs each call to `calls.log`)
+instead of calling Linear or GitHub. Granting Bash needs Claude Code's sandbox: on Linux,
+`apt install bubblewrap socat`. Each case runs 3 times, so a full run costs real tokens.
 
 The engine generates `.claude-plugin/types/` when the mod loads, and the type-check needs it.
 Layout: `lib/` is shared code with no Node or browser APIs; `hooks/` is the mod; `bin/` is the CLI.
