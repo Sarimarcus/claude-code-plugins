@@ -29,6 +29,11 @@ if (manifest.version !== version) problems.push(`plugin.json version is ${manife
 if (!entry) problems.push(`marketplace.json has no entry for ${plugin}`)
 else if (entry.version && entry.version !== version) problems.push(`marketplace.json version is ${entry.version}, tag says ${version}`)
 
+// The version lives in the manifests and the CHANGELOG only; a number in the README's Version section drifts.
+const readme = readFileSync(join(root, 'plugins', plugin, 'README.md'), 'utf8')
+const versionSection = /^## Version\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(readme)?.[1] ?? ''
+if (/\d+\.\d+\.\d+/.test(versionSection)) problems.push('README.md "Version" section hard-codes a version: link to the CHANGELOG instead')
+
 const changelog = readFileSync(join(root, 'plugins', plugin, 'CHANGELOG.md'), 'utf8')
 const heading = new RegExp(`^## ${version.replace(/[.]/g, '\\.')}\\b.*$`, 'm')
 const start = changelog.search(heading)

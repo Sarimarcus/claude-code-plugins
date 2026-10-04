@@ -399,7 +399,8 @@ Olivier Depiesse ([@Sarimarcus](https://github.com/Sarimarcus))
 
 ## Version
 
-0.1.0. See [CHANGELOG.md](CHANGELOG.md).
+See [CHANGELOG.md](CHANGELOG.md) for the current version and its history. The version lives only in
+`plugin.json` (and the marketplace entry): don't write it here.
 
 ## License
 
