@@ -19,13 +19,13 @@ steps below are the defaults.
 
 ## 1. Resolve
 
-Same as `issue-review` step 1: the session's issue, else `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" resolve $ARGUMENTS`.
-`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" config` gives `baseBranch`, `mergeMethod` (default `merge`) and `deleteBranch`.
+Same as `issue-review` step 1: the session's issue, else `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" resolve $ARGUMENTS`.
+`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" config` gives `baseBranch`, `mergeMethod` (default `merge`) and `deleteBranch`.
 
 ## 2. Can it land?
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" pr-check ABC-123
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" pr-check ABC-123
 ```
 
 The CLI makes the decision, so don't second-guess it:
@@ -64,7 +64,7 @@ Print `Merging <pr.url> — ABC-123 <title>.`, then use `mergeMethod`:
 Don't trust a command's success output. Ask GitHub:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" pr-merged ABC-123 --pr <pr.number>
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" pr-merged ABC-123 --pr <pr.number>
 ```
 
 Exit 0 (`landed: true`, with `mergeCommit`) → continue. Exit 2 → stop before touching Linear, and
@@ -75,7 +75,7 @@ report `state`. Then update the local checkout: `git switch <base> && git pull -
 Write the close-out comment to a temp file, then:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition ABC-123 Done --comment-file <file>
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" transition ABC-123 Done --comment-file <file>
 ```
 
 The comment: `- **Changed:** <one line>` · `- **Files:** merge commit <sha>` ·

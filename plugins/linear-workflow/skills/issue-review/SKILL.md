@@ -26,8 +26,8 @@ the `linear-workflow:linear-manager` agent instead and say so.
 If this session started an issue with `issue-start` and no argument was given, use that id. Otherwise:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" resolve $ARGUMENTS
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" config
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" resolve $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" config
 ```
 
 `resolve` takes the argument, then the issue id in the branch name, then your only started issue in
@@ -87,7 +87,7 @@ The `Closes ABC-123` line is what links the PR to the issue, so it is required.
 Write the completion comment to a temp file, then:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition ABC-123 "In Review" --comment-file <file>
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" transition ABC-123 "In Review" --comment-file <file>
 ```
 
 The comment, four bullets:

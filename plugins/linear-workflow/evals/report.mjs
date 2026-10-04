@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes evals/RESULTS.md from the newest `claude plugin eval` run (or the aggregate-result.json given).
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,8 +10,11 @@ const resultsDir = join(evalsDir, 'results')
 
 function newestAggregate() {
   if (!existsSync(resultsDir)) return null
-  const runs = readdirSync(resultsDir).filter(d => existsSync(join(resultsDir, d, 'aggregate-result.json'))).sort()
-  return runs.length ? join(resultsDir, runs[runs.length - 1], 'aggregate-result.json') : null
+  const files = readdirSync(resultsDir)
+    .map(d => join(resultsDir, d, 'aggregate-result.json'))
+    .filter(f => existsSync(f))
+    .sort((x, y) => statSync(x).mtimeMs - statSync(y).mtimeMs)
+  return files[files.length - 1] ?? null
 }
 
 const source = process.argv[2] ?? newestAggregate()
@@ -73,4 +76,6 @@ and grades what Claude did: which commands it ran and what it told the user.
 `
 
 writeFileSync(join(evalsDir, 'RESULTS.md'), md)
-console.log(`✓ evals/RESULTS.md: ${a.casesPassed}/${a.casesTotal} case(s) passed, ${data.cases.length} reported, from ${source}`)
+const ok = a.casesPassed === a.casesTotal
+console.log(`${ok ? '✓' : '✗'} evals/RESULTS.md: ${a.casesPassed}/${a.casesTotal} case(s) passed, ${data.cases.length} reported, from ${source}`)
+process.exitCode = ok ? 0 : 1

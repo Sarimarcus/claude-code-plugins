@@ -22,7 +22,7 @@ graders:
   - name: "asks-the-cli-issue"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.ts\\\\?\\\"?\\s+issue"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+issue"
     min: 1
   - name: "comment-verbatim"
     type: "regex"

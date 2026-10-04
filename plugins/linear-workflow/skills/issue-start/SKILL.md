@@ -23,7 +23,7 @@ step through the `linear-workflow:linear-manager` agent and say that you did.
 ## 1. Fetch
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" issue "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" issue "$ARGUMENTS"
 ```
 
 `$ARGUMENTS` can be `ABC-123`, `#123` or `123`; a bare number needs `teamKey` in `.claude/linear.json`.
@@ -58,7 +58,7 @@ If `blockedBy` is not empty, list the blockers and ask `Continue anyway? [y/N]`.
 ## 3. Move to In Progress
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition <ID> "In Progress"
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" transition <ID> "In Progress"
 ```
 
 Idempotent: if the issue is already in that state, nothing is written.
@@ -74,7 +74,7 @@ switching branches. Never stash or discard them.
 Use `branchName` from step 1 (Linear always sets it). If the branch exists, switch to it. Otherwise
 create it **from the up-to-date base**, never from what is checked out now: starting from another
 issue's branch would drag its commits into this PR. `<base>` is `baseBranch` from
-`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" config`, which already falls back to the repo's
+`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" config`, which already falls back to the repo's
 default branch.
 
 ```bash

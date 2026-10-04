@@ -21,7 +21,7 @@ graders:
   - name: "asks-the-cli-pr-check"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.ts\\\\?\\\"?\\s+pr-check"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+pr-check"
     min: 1
   - name: "never-merges-or-pushes"
     type: "tool_used"

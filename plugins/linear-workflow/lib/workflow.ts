@@ -53,14 +53,12 @@ export function normalizeId(input: string, teamKey?: string): string | undefined
   return undefined
 }
 
-/** Team keys to look for in branch names: explicit option, then linear.json's teamKey, then your teams. */
+/** Team keys to look for in branch names: the repo's linear.json, then the user's plugin option, then your teams. */
 export async function resolveTeamKeys(input: {
   option?: string
   configText?: string
   fetchMine?: () => Promise<string[]>
 }): Promise<string[]> {
-  const fromOption = splitKeys(input.option)
-  if (fromOption.length) return fromOption
   let fromConfig: string[] = []
   try {
     fromConfig = splitKeys(parseProjectConfig(input.configText).teamKey)
@@ -68,6 +66,8 @@ export async function resolveTeamKeys(input: {
     // unreadable linear.json: fall through
   }
   if (fromConfig.length) return fromConfig
+  const fromOption = splitKeys(input.option)
+  if (fromOption.length) return fromOption
   try {
     return input.fetchMine ? splitKeys((await input.fetchMine()).join(',')) : []
   } catch {

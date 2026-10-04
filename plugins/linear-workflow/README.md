@@ -12,7 +12,7 @@ The plugin has four parts:
 - **Skills (slash commands)** take an issue from the cycle to a merged PR:
   `issue-next` → `issue-start` → *(work)* → `issue-review` → `issue-ship`, plus `issue-plan-cycle`
   to fill the cycle.
-- **A CLI** (`bin/linear-workflow.ts`) runs the Linear and GitHub steps that need no judgment: fetching and ranking
+- **A CLI** (`bin/linear-workflow.mjs`) runs the Linear and GitHub steps that need no judgment: fetching and ranking
   issues, status changes, cycle changes, PR checks. It's faster than an LLM and gives the same answer
   every time. Claude keeps the parts that need judgment: reading the issue, writing the code, the
   commit message, PR summary and comments.
@@ -128,7 +128,7 @@ to it when the CLI can't reach Linear. It follows the same rules as the CLI:
 
 ## The CLI
 
-The skills call it as `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" <command>`. You can run it
+The skills call it as `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" <command>`. You can run it
 yourself from any repo. It prints JSON on stdout and one summary line on stderr, stating what it
 examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human).
 
@@ -216,7 +216,7 @@ the one before it:
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `linearApiKey` | — | Linear API key, stored as a secret (secret options are not shown in `/config`). If unset: `LINEAR_API_KEY` in the environment, then in `<repo>/.env` |
-| `teamKeys` | *(auto)* | Team keys to find in branch names. If empty: `teamKey` from `.claude/linear.json`, else the keys of the teams you belong to. The mod passes this to the CLI too |
+| `teamKeys` | *(auto)* | Team keys to find in branch names, for repos whose `.claude/linear.json` sets no `teamKey`. Else the keys of the teams you belong to. The mod passes this to the CLI too |
 | `pinCommand` | `issue-start` | Skill whose first argument pins an issue to the session. Empty disables it |
 | `pollMinutes` | `5` | How often the mod refreshes the issue |
 | `showOtherSessions` | `true` | Share this session's issue with your other sessions and list theirs |
@@ -276,7 +276,7 @@ label is scoped to everything.
   Keep calling the CLI for the deterministic steps so the checks stay the same. If you rename
   `issue-start`, set the `pinCommand` plugin setting to your skill's name so the band follows it.
 - **Use the CLI directly.** It works without the skills, in your own scripts or CI:
-  `node <plugin>/bin/linear-workflow.ts queue`.
+  `node <plugin>/bin/linear-workflow.mjs queue`.
 - **Turn parts off.** `/linear hide` hides the band; `showOtherSessions: false` stops the session
   list; leaving `registryFile` empty keeps scope and drift checks off.
 
@@ -320,7 +320,7 @@ Configuration).
 terminal (about 144 columns). `/linear` opens it at any width.
 
 **A skill says `LINEAR_API_KEY not set`.** Set the key (Quick start, step 1). Run
-`node "<plugin>/bin/linear-workflow.ts" config` to see what the CLI finds.
+`node "<plugin>/bin/linear-workflow.mjs" config` to see what the CLI finds.
 
 **The agent says Linear tools are missing.** Connect the Linear MCP server (Quick start, step 2),
 then restart the session.

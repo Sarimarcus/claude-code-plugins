@@ -29,8 +29,9 @@ describe('ids and config', () => {
     expect(normalizeId('12')).toBe(undefined)
     expect(normalizeId('refresh', 'ENG')).toBe(undefined)
   })
-  test('team keys: option, then linear.json, then your teams', async () => {
+  test('team keys: linear.json, then the plugin option, then your teams', async () => {
     expect(await resolveTeamKeys({ option: ' eng, ops  web-1 ' })).toEqual(['ENG', 'OPS'])
+    expect(await resolveTeamKeys({ option: 'ENG', configText: '{"teamKey":"WEB"}' })).toEqual(['WEB'])
     expect(await resolveTeamKeys({ configText: '{"teamKey":"web"}', fetchMine: async () => ['X'] })).toEqual(['WEB'])
     expect(await resolveTeamKeys({ configText: '{not json', fetchMine: async () => ['abc'] })).toEqual(['ABC'])
     expect(await resolveTeamKeys({ fetchMine: async () => { throw new Error('offline') } })).toEqual([])

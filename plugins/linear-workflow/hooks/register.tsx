@@ -462,7 +462,7 @@ export const register: Register = (on, options) => {
     const scope = scopeSites(issue, siteKeys)
     const meta = [
       source.from === 'pinned' ? (source.detail.startsWith('held') ? 'held' : 'pinned') : source.from === 'root' ? 'root branch' : source.detail,
-      scope.length ? `scope: ${scope.join(', ')}` : 'scope: all',
+      siteKeys.length === 0 ? '' : scope.length ? `scope: ${scope.join(', ')}` : 'scope: all',
       issue.parent ? `parent ${issue.parent.identifier}` : '',
       error ? `stale: ${error}` : '',
     ].filter(Boolean)

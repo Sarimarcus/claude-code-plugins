@@ -39,7 +39,7 @@ export function pickSource(rootBranch: string, siteBranches: Record<string, stri
   if (!top) return null
   const [id, sites] = top
   const others = bySite.size > 1 ? `, mixed: ${[...bySite.keys()].filter(k => k !== id).join(', ')}` : ''
-  return { id, from: 'sites', detail: `${sites.length} site(s) on it${others}` }
+  return { id, from: 'sites', detail: `${sites.length} project(s) on it${others}` }
 }
 
 /** Site keys the issue is scoped to through its labels (or its parent's); empty means every site. */

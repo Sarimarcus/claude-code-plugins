@@ -10,7 +10,7 @@ Read-only. A five-second decision, not a planning session. That is `issue-plan-c
 ## 1. Fetch the ranked queue
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" queue --limit 10
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" queue --limit 10
 ```
 
 The CLI does the whole selection deterministically:

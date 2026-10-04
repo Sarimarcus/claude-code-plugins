@@ -21,7 +21,7 @@ graders:
   - name: "asks-the-cli-queue"
     type: "tool_used"
     tool: "Bash"
-    input_match: "linear-workflow\\.ts\\\\?\\\"?\\s+queue"
+    input_match: "linear-workflow\\.(mjs|ts)\\\\?\\\"?\\s+queue"
     min: 1
   - name: "never-writes-linear"
     type: "tool_used"
