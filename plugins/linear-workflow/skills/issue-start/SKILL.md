@@ -55,6 +55,9 @@ there are no comments, print `Comments: none`.
 
 If `blockedBy` is not empty, list the blockers and ask `Continue anyway? [y/N]`. Go on only on a yes.
 
+Do steps 1–3 before touching git: don't create or switch branches until you've seen the context and
+the blockers.
+
 ## 3. Move to In Progress
 
 ```bash
