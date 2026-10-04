@@ -1,7 +1,12 @@
 {
-  "name": "claude-linear-issue",
-  "owner": { "name": "Olivier Depiesse", "url": "https://github.com/Sarimarcus" },
-  "metadata": { "description": "Linear issue band and pane for Claude Code" },
+  "name": "sarimarcus",
+  "owner": {
+    "name": "Olivier Depiesse",
+    "url": "https://github.com/Sarimarcus"
+  },
+  "metadata": {
+    "description": "Claude Code plugins by Olivier Depiesse"
+  },
   "plugins": [
     {
       "name": "linear-issue",
