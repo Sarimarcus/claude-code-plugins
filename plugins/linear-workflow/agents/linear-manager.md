@@ -97,6 +97,9 @@ To set a cycle, pass the cycle **number** with `save_issue {id, cycle}` and chan
 
 ## Description template
 
+If the project has its own template (`issueTemplate` in `.claude/linear.json`, a path from the repo root,
+or a template described in `CLAUDE.md`), use it. Otherwise:
+
 ```markdown
 ## Context
 <why this exists>

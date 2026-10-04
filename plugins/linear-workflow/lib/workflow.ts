@@ -10,7 +10,15 @@ export type ProjectConfig = {
   checks?: string[]
   mergeMethod?: 'merge' | 'squash' | 'rebase' | 'local'
   deleteBranch?: boolean
+  /** Your team's names for the three states the skills move issues to. */
+  states?: StateNames
+  /** What issue-start does about branches: create one (default), ask, or stay on the current one. */
+  branching?: 'create' | 'ask' | 'none'
+  /** Path (from the repo root) of a markdown template the agent uses for new issue descriptions. */
+  issueTemplate?: string
 }
+
+export type StateNames = { inProgress?: string; inReview?: string; done?: string }
 
 export function parseProjectConfig(text: string | undefined): ProjectConfig {
   if (!text) return {}
@@ -24,6 +32,14 @@ export function parseProjectConfig(text: string | undefined): ProjectConfig {
     out.mergeMethod = raw.mergeMethod as ProjectConfig['mergeMethod']
   }
   if (typeof raw.deleteBranch === 'boolean') out.deleteBranch = raw.deleteBranch
+  if (['create', 'ask', 'none'].includes(String(raw.branching))) out.branching = raw.branching as ProjectConfig['branching']
+  if (typeof raw.issueTemplate === 'string') out.issueTemplate = raw.issueTemplate
+  if (raw.states && typeof raw.states === 'object') {
+    const st = raw.states as Record<string, unknown>
+    const names: StateNames = {}
+    for (const key of ['inProgress', 'inReview', 'done'] as const) if (typeof st[key] === 'string') names[key] = st[key] as string
+    out.states = names
+  }
   return out
 }
 
@@ -96,9 +112,17 @@ const ACTIONABLE: StateType[] = ['unstarted', 'started']
 
 const REVIEW_NAMES = ['in review', 'review', 'to review', 'qa', 'in qa', 'code review']
 
+let customStates: StateNames = {}
+
+/** Apply the project's own state names (`states` in .claude/linear.json) for this process. */
+export function useStateNames(names: StateNames | undefined): void {
+  customStates = names ?? {}
+}
+
 /** Linear files review states under `started`, like In Progress; they are not work to pick up. */
 export function isInReview(state: { name: string }): boolean {
-  return REVIEW_NAMES.includes(state.name.trim().toLowerCase())
+  const name = state.name.trim().toLowerCase()
+  return REVIEW_NAMES.includes(name) || name === customStates.inReview?.trim().toLowerCase()
 }
 
 export function isActionable(issue: IssueSummary): boolean {
@@ -269,12 +293,17 @@ const ROLE_ALIASES: Record<string, string[]> = {
   done: ['done', 'completed', 'shipped', 'closed'],
 }
 
-/** Resolve a target like "In Review" against a team's workflow states. */
+const ROLE_KEYS: Record<string, keyof StateNames> = { 'in progress': 'inProgress', 'in review': 'inReview', done: 'done' }
+
+/** Resolve a target like "In Review" against a team's workflow states, the project's own names first. */
 export function resolveState(states: TeamState[], target: string): TeamState | undefined {
   const wanted = target.trim().toLowerCase()
+  const role = Object.entries(ROLE_ALIASES).find(([, names]) => names.includes(wanted))
+  const customName = role ? customStates[ROLE_KEYS[role[0]] as keyof StateNames]?.trim().toLowerCase() : undefined
+  const custom = customName ? states.find(s => s.name.toLowerCase() === customName) : undefined
+  if (custom) return custom
   const exact = states.find(s => s.name.toLowerCase() === wanted)
   if (exact) return exact
-  const role = Object.entries(ROLE_ALIASES).find(([, names]) => names.includes(wanted))
   if (role) {
     const byAlias = states.find(s => role[1].includes(s.name.toLowerCase()))
     if (byAlias) return byAlias

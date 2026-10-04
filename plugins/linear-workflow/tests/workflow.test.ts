@@ -5,7 +5,7 @@ import { createClient, toSummary } from '../lib/linear.ts'
 import type { PrInfo } from '../lib/pr.ts'
 import { belongsTo, evaluateMerged, evaluatePr, summarizeChecks } from '../lib/pr.ts'
 import type { TeamState } from '../lib/workflow.ts'
-import { daysUntil, isActionable, normalizeId, parseProjectConfig, rank, resolveState, resolveTeamKeys, siblingsUnfinished, transition } from '../lib/workflow.ts'
+import { daysUntil, isActionable, isInReview, normalizeId, parseProjectConfig, rank, resolveState, resolveTeamKeys, siblingsUnfinished, transition, useStateNames } from '../lib/workflow.ts'
 
 const summary = (id: string, priority: number, targetDate: string | null, createdAt: string): IssueSummary => ({
   id, identifier: id, title: id, url: '', priority, priorityLabel: '', state: { name: 'Todo', type: 'unstarted' },
@@ -229,5 +229,29 @@ describe('pr ownership and landing', () => {
     expect(evaluateMerged({ state: 'MERGED', mergeCommit: { oid: 'abc' }, url: 'u', number: 1 }).landed).toBe(true)
     expect(evaluateMerged({ state: 'OPEN', mergeCommit: null, url: 'u', number: 1 }).landed).toBe(false)
     expect(evaluateMerged({ state: 'MERGED', mergeCommit: null, url: 'u', number: 1 }).landed).toBe(false)
+  })
+})
+
+describe('project settings', () => {
+  test('states, branching and issueTemplate are read; bad values dropped', async () => {
+    const c = parseProjectConfig('{"states":{"inReview":"Ready for QA","done":7},"branching":"ask","issueTemplate":"t.md"}')
+    expect(c).toEqual({ states: { inReview: 'Ready for QA' }, branching: 'ask', issueTemplate: 't.md' })
+    expect(parseProjectConfig('{"branching":"sometimes"}')).toEqual({})
+  })
+  test('custom state names win over Linear defaults, and count as review', async () => {
+    const states: TeamState[] = [
+      ...STATES,
+      { id: 's-qa', name: 'Ready for QA', type: 'started', position: 3.5 },
+    ]
+    useStateNames({ inReview: 'Ready for QA', inProgress: 'Doing' })
+    try {
+      expect(resolveState(states, 'In Review')?.id).toBe('s-qa')
+      expect(isInReview({ name: 'ready for qa' })).toBe(true)
+      // a configured name the team doesn't have falls back to the usual matching
+      expect(resolveState(states, 'In Progress')?.id).toBe('s-prog')
+    } finally {
+      useStateNames(undefined)
+    }
+    expect(resolveState(states, 'In Review')?.id).toBe('s-rev')
   })
 })

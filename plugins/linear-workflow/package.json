@@ -3,10 +3,14 @@
   "private": true,
   "type": "module",
   "description": "Development tooling only. Installing the plugin needs none of this.",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "typecheck": "tsc -p . && tsc -p bin",
-    "test": "claude plugin test ."
+    "test": "claude plugin test .",
+    "eval": "rm -rf evals/results/latest; claude plugin eval . -j 4 --ablation none --allow-tools Bash --scaffold --trust-plugin --no-publish --output-dir evals/results/latest; node evals/report.mjs evals/results/latest/aggregate-result.json",
+    "eval:report": "node evals/report.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

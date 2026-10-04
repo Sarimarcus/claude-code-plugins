@@ -13,6 +13,10 @@ id was resolved rather than typed, confirm it once before merging.
 
 Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
+**Project conventions win.** Where the project's `CLAUDE.md`, `CONTRIBUTING.md` or `.claude/linear.json`
+says otherwise (commit style, PR format, checks, branching, state names), follow the project. The
+steps below are the defaults.
+
 ## 1. Resolve
 
 Same as `issue-review` step 1: the session's issue, else `node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" resolve $ARGUMENTS`.

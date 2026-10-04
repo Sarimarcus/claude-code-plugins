@@ -4,10 +4,9 @@
   "project": "Website",
   "assignee": "me",
   "baseBranch": "main",
-  "checks": [
-    "npm run build",
-    "npm test"
-  ],
+  "checks": ["npm run build", "npm test"],
   "mergeMethod": "squash",
-  "deleteBranch": true
+  "deleteBranch": true,
+  "branching": "create",
+  "states": { "inProgress": "In Progress", "inReview": "In Review", "done": "Done" }
 }

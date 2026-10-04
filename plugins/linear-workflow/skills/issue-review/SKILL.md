@@ -14,6 +14,10 @@ Running this command authorizes pushing **this issue's feature branch**. It neve
 
 Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
+**Project conventions win.** Where the project's `CLAUDE.md`, `CONTRIBUTING.md` or `.claude/linear.json`
+says otherwise (commit style, PR format, checks, branching, state names), follow the project. The
+steps below are the defaults.
+
 If a CLI call exits 1 because the API key is missing or Linear is unreachable, do that step through
 the `linear-workflow:linear-manager` agent instead and say so.
 
@@ -49,14 +53,17 @@ which ones you ran. Stop on the first failure and show its output. Don't commit.
 ## 4. Commit and push
 
 - Stage the paths that belong to this issue explicitly. Never `git add -A`.
-- Message: a conventional-commit prefix (`fix:` for a Bug label or a "fix" title, otherwise `feat:`/`chore:` by
-  judgment) + the issue title + ` (ABC-123)`.
+- Message: the project's commit convention if it has one (CLAUDE.md, CONTRIBUTING.md, recent `git log`).
+  Otherwise a conventional-commit prefix (`fix:` for a Bug label or a "fix" title, else `feat:`/`chore:`)
+  + the issue title + ` (ABC-123)`. Always keep the issue id in it.
 - Skip the commit if there is nothing to commit. A branch that is already ahead still needs the push.
 - `git push -u origin HEAD`. Never force-push.
 
 ## 5. Open the PR
 
-If `config` reported an `existingPr`, reuse it. Otherwise:
+If `config` reported an `existingPr`, reuse it. Otherwise open one. If the repo has a PR template
+(`.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE/`), fill that in and add the
+`Closes ABC-123` line to it; otherwise use:
 
 ```bash
 gh pr create --base "<baseBranch>" --title "<title> (ABC-123)" --body "$(cat <<'BODY'

@@ -200,6 +200,17 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 
 ## Configuration
 
+Nothing is required beyond the API key. Everything else is inferred, and each layer below overrides
+the one before it:
+
+1. **Built-in defaults**: GitHub flow, a branch per issue, standard Linear state names.
+2. **Plugin settings** (per user): the API key, team keys, polling, the session list.
+3. **Project settings** (`.claude/linear.json`, per repo, committed): states, branching, checks,
+   merge method, issue template.
+4. **Project conventions** (`CLAUDE.md`, `CONTRIBUTING.md`, the PR template): the skills follow them
+   for commit messages, PR bodies and anything else they describe.
+5. **Your own skills**: see [Customizing](#customizing).
+
 ### Plugin settings
 
 | Option | Default | Meaning |
@@ -209,7 +220,7 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 | `pinCommand` | `issue-start` | Skill whose first argument pins an issue to the session. Empty disables it |
 | `pollMinutes` | `5` | How often the mod refreshes the issue |
 | `showOtherSessions` | `true` | Share this session's issue with your other sessions and list theirs |
-| `registryFile` | `sites.json` | Sub-project registry for scope and drift. Missing file = feature off |
+| `registryFile` | — | Sub-project registry for scope and drift (monorepos). Empty: off |
 
 ### Project settings (`.claude/linear.json`)
 
@@ -225,22 +236,49 @@ Optional, all fields optional. A missing value is inferred, or the skill asks on
   "baseBranch": "main",
   "checks": ["npm run build", "npm test"],
   "mergeMethod": "squash",
-  "deleteBranch": true
+  "deleteBranch": true,
+  "branching": "create",
+  "states": { "inProgress": "Doing", "inReview": "Ready for QA", "done": "Shipped" },
+  "issueTemplate": ".github/linear-issue.md"
 }
 ```
 
-`mergeMethod`: `merge` (default), `squash`, `rebase`, or `local` (`git merge --no-ff` + push, so
-your own `pre-push` hooks run).
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `team`, `teamKey`, `project`, `assignee` | inferred | Where the skills look and file issues. `teamKey` also lets you type bare numbers (`123`) |
+| `baseBranch` | origin's default branch | Base for new branches and PRs |
+| `checks` | inferred (`npm test`, `make test`…) | Commands `issue-review` runs before committing |
+| `mergeMethod` | `merge` | `merge`, `squash`, `rebase`, or `local` (`git merge --no-ff` + push, so your own `pre-push` hooks run) |
+| `deleteBranch` | `false` | Delete the branch after merging |
+| `branching` | `create` | `issue-start` creates the issue's branch (`create`), asks (`ask`), or stays on the current one (`none`) |
+| `states` | Linear's usual names | Your team's names for In Progress, In Review and Done, used by every transition and by the queue's review filter |
+| `issueTemplate` | 4-section template | A markdown file the agent uses for new issue descriptions |
 
 ### Sub-project registry (monorepos)
 
+Set the `registryFile` plugin setting to a JSON file at the repo root:
+
 ```json
-{ "sites": [ { "key": "web", "path": "apps/web" }, { "key": "api", "path": "services/api" } ] }
+{ "projects": [ { "key": "web", "path": "apps/web" }, { "key": "api", "path": "services/api" } ] }
 ```
 
 An issue labelled `web` (or whose parent is) is scoped to `apps/web`, so editing
 `services/api/...` raises a drift toast once per issue and sub-project. An issue with no matching
 label is scoped to everything.
+
+## Customizing
+
+- **Settings first.** Most differences between teams (state names, branching, checks, merge method,
+  templates) are settings above, and project conventions in `CLAUDE.md` take precedence over the
+  skills' defaults.
+- **Replace a skill.** Copy `skills/<name>/SKILL.md` into your project's `.claude/skills/<name>/` and
+  edit it. Yours runs as `/<name>`, and the plugin's stays available as `/linear-workflow:<name>`.
+  Keep calling the CLI for the deterministic steps so the checks stay the same. If you rename
+  `issue-start`, set the `pinCommand` plugin setting to your skill's name so the band follows it.
+- **Use the CLI directly.** It works without the skills, in your own scripts or CI:
+  `node <plugin>/bin/linear-workflow.ts queue`.
+- **Turn parts off.** `/linear hide` hides the band; `showOtherSessions: false` stops the session
+  list; leaving `registryFile` empty keeps scope and drift checks off.
 
 ## Safety
 
@@ -311,7 +349,7 @@ claude --plugin-dir .      # from this folder: load from source, hot-reloads on 
 claude plugin validate .
 claude plugin test .       # unit tests (lib/ and the mod)
 npm install && npm run typecheck   # dev only: mod + lib, then CLI + lib
-claude plugin eval . --scaffold --allow-tools Bash --ablation none   # skill evals
+npm run eval                       # skill evals, then writes evals/RESULTS.md
 ```
 
 **Evals** (`evals/`) check the skills' guardrails: `issue-ship` stops on a missing, draft or failing PR
@@ -321,7 +359,8 @@ actionable comments verbatim and hides acceptance criteria; `issue-next` keeps t
 urgency. Each case's `scaffold.sh` builds a git repo and canned CLI answers in `.lw/`; with
 `EVAL_LINEAR_WORKFLOW_FIXTURES` set, the CLI answers from there (and logs each call to `calls.log`)
 instead of calling Linear or GitHub. Granting Bash needs Claude Code's sandbox: on Linux,
-`apt install bubblewrap socat`. Each case runs 3 times, so a full run costs real tokens.
+`apt install bubblewrap socat`. Each case runs 3 times, so a full run costs real tokens (about $3). The latest results are in
+[`evals/RESULTS.md`](evals/RESULTS.md): commit it with each release.
 
 The engine generates `.claude-plugin/types/` when the mod loads, and the type-check needs it.
 Layout: `lib/` is shared code with no Node or browser APIs; `hooks/` is the mod; `bin/` is the CLI.

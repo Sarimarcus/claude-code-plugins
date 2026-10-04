@@ -44,7 +44,7 @@ let teamKeys: string[] = []
 let config = {
   linearApiKey: '',
   teamKeys: '',
-  registryFile: 'sites.json',
+  registryFile: '',
   pinCommand: 'issue-start',
   pollMinutes: 5,
   showOtherSessions: true,
@@ -72,9 +72,10 @@ async function loadRepo($: EngineInterface): Promise<Repo | null> {
   try {
     if (!config.registryFile) throw new Error('no registry')
     const registry = JSON.parse(await $.fs.read(`${top}/${config.registryFile}`)) as {
+      projects?: { key: string; path: string; active?: boolean }[]
       sites?: { key: string; path: string; active?: boolean }[]
     }
-    sites = (registry.sites ?? [])
+    sites = (registry.projects ?? registry.sites ?? [])
       .filter(s => s.active !== false)
       .map(s => ({ key: s.key, path: `${top}/${s.path}` }))
   } catch {
@@ -285,7 +286,7 @@ export const register: Register = (on, options) => {
   config = {
     linearApiKey: String(options.linearApiKey ?? ''),
     teamKeys: String(options.teamKeys ?? ''),
-    registryFile: String(options.registryFile ?? 'sites.json'),
+    registryFile: String(options.registryFile ?? ''),
     pinCommand: String(options.pinCommand ?? 'issue-start').replace(/^\//, ''),
     pollMinutes: Math.max(1, Number(options.pollMinutes ?? 5) || 5),
     showOtherSessions: options.showOtherSessions !== false,
@@ -461,7 +462,7 @@ export const register: Register = (on, options) => {
     const scope = scopeSites(issue, siteKeys)
     const meta = [
       source.from === 'pinned' ? (source.detail.startsWith('held') ? 'held' : 'pinned') : source.from === 'root' ? 'root branch' : source.detail,
-      scope.length ? `scope: ${scope.join(', ')}` : 'scope: all sites',
+      scope.length ? `scope: ${scope.join(', ')}` : 'scope: all',
       issue.parent ? `parent ${issue.parent.identifier}` : '',
       error ? `stale: ${error}` : '',
     ].filter(Boolean)

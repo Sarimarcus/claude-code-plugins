@@ -13,6 +13,10 @@ on stderr. Exit 0 means ok, 1 means an error (the message is in `error`), and 2 
 
 Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
+**Project conventions win.** Where the project's `CLAUDE.md`, `CONTRIBUTING.md` or `.claude/linear.json`
+says otherwise (commit style, PR format, checks, branching, state names), follow the project. The
+steps below are the defaults.
+
 **Fallback:** if a CLI call exits 1 because the API key is missing or Linear is unreachable, do the same
 step through the `linear-workflow:linear-manager` agent and say that you did.
 
@@ -60,6 +64,9 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition <ID> "In Progress
 Idempotent: if the issue is already in that state, nothing is written.
 
 ## 4. Branch
+
+`branching` from `config` decides: `create` (default) creates the issue's branch as below; `ask` asks
+first; `none` stays on the current branch and skips this step.
 
 If the working tree has uncommitted changes that are not part of this issue, stop and ask before
 switching branches. Never stash or discard them.

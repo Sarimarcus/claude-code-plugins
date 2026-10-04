@@ -20,6 +20,7 @@ import {
   resolveTeamKeys,
   setCycle,
   transition,
+  useStateNames,
 } from '../lib/workflow.ts'
 
 const USAGE = `Usage: linear-workflow <command> [args]
@@ -79,6 +80,7 @@ async function context(flags: Record<string, string | true>) {
   const root = (await findRoot(async args => run('git', args))) || process.cwd()
   const configText = readIfExists(`${root}/.claude/linear.json`)
   const config = parseProjectConfig(configText)
+  useStateNames(config.states)
   const apiKey = resolveApiKey({ env: process.env.LINEAR_API_KEY, envFileText: readIfExists(`${root}/.env`) })
   const teamKey = typeof flags.team === 'string' ? flags.team.toUpperCase() : undefined
   return { root, config, configText, apiKey, teamKey }

@@ -38,8 +38,8 @@
     "registryFile": {
       "type": "string",
       "title": "Sub-project registry",
-      "description": "Optional JSON file at the repo root listing sub-projects ({\"sites\":[{\"key\",\"path\",\"active\"}]}). When present, issue labels that match a key define the issue's scope, and edits outside it raise a drift toast.",
-      "default": "sites.json",
+      "description": "Optional JSON file at the repo root listing sub-projects ({\"projects\":[{\"key\",\"path\"}]}). When set, issue labels that match a key define the issue's scope, and edits outside it raise a drift toast. Empty: off.",
+      "default": "",
       "required": false
     },
     "pinCommand": {
