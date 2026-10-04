@@ -180,6 +180,7 @@ async function main(argv: string[]): Promise<Outcome> {
           branch,
           baseBranch: base,
           onBaseBranch: branch === base || branch === 'main' || branch === 'master',
+          branchIssue: idFromBranch(branch, await teamKeys(ctx)) ?? null,
           existingPr,
           teamKeys: await teamKeys(ctx),
           hasApiKey: Boolean(ctx.apiKey),
@@ -214,7 +215,7 @@ async function main(argv: string[]): Promise<Outcome> {
       const issue = await issueDetail(client(ctx.apiKey), id)
       return {
         out: issue,
-        summary: `issue: ${issue.identifier} ${issue.state.name}, ${issue.comments.length} comment(s), ${issue.children.length} sub-issue(s), ${issue.blockedBy.length} open blocker(s)`,
+        summary: `issue: ${issue.identifier} ${issue.state.name}, ${issue.acceptanceCriteria.length} acceptance criteria, ${issue.comments.length} comment(s), ${issue.children.length} sub-issue(s), ${issue.blockedBy.length} open blocker(s)`,
       }
     }
 

@@ -79,7 +79,8 @@ Puts the work up for review. Never merges or deploys.
 ```
 
 Claude will:
-- Refuse if you're on the base branch
+- Refuse if you're on the base branch, or on a branch that names another issue
+- Check each acceptance criterion against the change, and ask before going on if one isn't met
 - Run your checks (from `.claude/linear.json`, or the obvious ones such as `npm test`)
 - Commit only the files for this issue (asking about unrelated ones) with ` (ENG-123)` in the message
 - Push the branch and open a PR whose body says `Closes ENG-123`
@@ -134,9 +135,9 @@ examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human
 
 | Command | What it does |
 | --- | --- |
-| `config` | Repo root, current branch, resolved base branch (`baseBranch`, else origin's default) and whether you're on it, this branch's open PR, team keys, whether a key was found, `.claude/linear.json` |
+| `config` | Repo root, current branch and the issue its name points to (`branchIssue`), resolved base branch (`baseBranch`, else origin's default) and whether you're on it, this branch's open PR, team keys, whether a key was found, `.claude/linear.json` |
 | `resolve [ABC-123\|123]` | Which issue to act on: the argument, then the branch name, then your only started issue. Exit 2 with `candidates` when it can't tell |
-| `issue <ABC-123>` | The issue with its description, open blockers, sub-issues, links, branch name and every comment, verbatim |
+| `issue <ABC-123>` | The issue with its description, parsed `acceptanceCriteria`, open blockers, sub-issues, links, branch name and every comment, verbatim |
 | `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked, each with `dueInDays` to its milestone |
 | `plan-cycle [--limit N]` | Unscheduled, unblocked backlog issues for the active cycle, ranked |
 | `transition <ABC-123> <state> [--comment TEXT \| --comment-file F]` | Idempotent status change, comment, parent roll-up (into the parent's own team states) |
@@ -285,8 +286,12 @@ label is scoped to everything.
 - `issue-review`, `issue-ship` and `issue-plan-cycle` can't be started by Claude on its own. You
   have to type them.
 - Typing one authorizes the push or merge for **that issue only**.
-- Nothing force-pushes, stashes, or discards changes. The only push to the base branch is the
-  merge itself, when `issue-ship` uses `mergeMethod: local`.
+- The skills never run `git push --force`, `git reset --hard`, `git clean`, `git checkout -- .`,
+  `git restore .`, a bare `git stash` or `git commit --amend`: each can destroy work that isn't
+  yours. Every eval checks this. The only push to the base branch is the merge itself, when
+  `issue-ship` uses `mergeMethod: local`.
+- `issue-review` refuses on a branch that names another issue, so work never lands under the wrong
+  issue.
 - `issue-ship` checks GitHub before writing to Linear, so a merge that failed is never reported as done.
 
 ## Best practices
@@ -361,7 +366,8 @@ npm run eval               # skill evals, then writes evals/RESULTS.md
 
 **Evals** (`evals/`) check the skills' guardrails: `issue-ship` stops on a missing, draft or failing PR
 and asks when several PRs or running checks are involved; `issue-review` refuses on the base branch
-and never stages unrelated files; `issue-start` never stashes or discards a dirty tree, quotes
+or another issue's branch, flags unmet acceptance criteria and never stages unrelated files;
+no skill ever runs a destructive git command; `issue-start` never stashes or discards a dirty tree, quotes
 actionable comments verbatim and hides acceptance criteria; `issue-next` keeps the CLI's order and
 urgency. Each case's `scaffold.sh` builds a git repo and canned CLI answers in `.lw/`; with
 `EVAL_LINEAR_WORKFLOW_FIXTURES` set, the CLI answers from there (and logs each call to `calls.log`)

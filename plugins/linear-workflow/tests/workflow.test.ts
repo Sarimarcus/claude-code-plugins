@@ -5,7 +5,7 @@ import { createClient, toSummary } from '../lib/linear.ts'
 import type { PrInfo } from '../lib/pr.ts'
 import { belongsTo, evaluateMerged, evaluatePr, summarizeChecks } from '../lib/pr.ts'
 import type { TeamState } from '../lib/workflow.ts'
-import { daysUntil, isActionable, isInReview, normalizeId, parseProjectConfig, rank, resolveState, resolveTeamKeys, siblingsUnfinished, transition, useStateNames } from '../lib/workflow.ts'
+import { daysUntil, isActionable, isInReview, normalizeId, parseAcceptanceCriteria, parseProjectConfig, rank, resolveState, resolveTeamKeys, siblingsUnfinished, transition, useStateNames } from '../lib/workflow.ts'
 
 const summary = (id: string, priority: number, targetDate: string | null, createdAt: string): IssueSummary => ({
   id, identifier: id, title: id, url: '', priority, priorityLabel: '', state: { name: 'Todo', type: 'unstarted' },
@@ -255,4 +255,15 @@ describe('project settings', () => {
     }
     expect(resolveState(states, 'In Review')?.id).toBe('s-rev')
   })
+})
+
+test('acceptance criteria: list items under the heading, checkbox state kept, stops at the next heading', async () => {
+  const d = '## Context\nx\n\n### Acceptance criteria\n- [ ] Contrast is AA\n- [x] Toggle persists\n* plain bullet\n1. numbered\n\n## Implementation\n- not a criterion'
+  expect(parseAcceptanceCriteria(d)).toEqual([
+    { text: 'Contrast is AA', checked: false },
+    { text: 'Toggle persists', checked: true },
+    { text: 'plain bullet', checked: false },
+    { text: 'numbered', checked: false },
+  ])
+  expect(parseAcceptanceCriteria('No headings at all')).toEqual([])
 })

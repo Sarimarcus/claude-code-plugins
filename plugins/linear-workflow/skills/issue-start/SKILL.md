@@ -68,6 +68,10 @@ Idempotent: if the issue is already in that state, nothing is written.
 
 ## 4. Branch
 
+**Never**, whatever happens: `git push --force`, `git reset --hard`, `git clean`, `git checkout -- .`
+or `git restore .`, a bare `git stash`, or `git commit --amend`. Each can destroy work that isn't
+yours, for example another session's in a shared checkout. If one seems necessary, stop and ask.
+
 `branching` from `config` decides: `create` (default) creates the issue's branch as below; `ask` asks
 first; `none` stays on the current branch and skips this step.
 

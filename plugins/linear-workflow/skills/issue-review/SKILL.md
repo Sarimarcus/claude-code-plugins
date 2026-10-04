@@ -41,16 +41,35 @@ this branch, or null) and `checks`.
 
 - `onBaseBranch` is true → stop: there is no branch to review. Run `issue-start` first or switch to
   the issue's branch.
+- `branchIssue` (the issue id `config` read from the branch name) is another issue → stop: this branch
+  belongs to that issue, and committing here would put this work under it. `branchIssue` is null
+  (the branch names no issue) → say so and ask before going on.
 - Show `git status --short`. If files that clearly don't belong to this issue are modified, ask
   which ones to include. Never commit them silently.
 
-## 3. Checks
+## 3. Acceptance criteria
+
+`issue-start` left these out on purpose. Check them now, before anything is committed:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" issue ABC-123
+```
+
+For each entry in `acceptanceCriteria`, say whether the change meets it, with the evidence (the file,
+test or behaviour). If any isn't met, or you can't tell, list those and ask whether to open the PR
+anyway. If the list is empty, say the issue has no acceptance criteria.
+
+## 4. Checks
 
 Run each command in `checks`, in order. If none are configured, infer the obvious ones (e.g.
 `npm run build` / `npm test` when `package.json` defines them, `make test`, `cargo test`) and say
 which ones you ran. Stop on the first failure and show its output. Don't commit.
 
-## 4. Commit and push
+## 5. Commit and push
+
+**Never**, whatever happens: `git push --force`, `git reset --hard`, `git clean`, `git checkout -- .`
+or `git restore .`, a bare `git stash`, or `git commit --amend`. Each can destroy work that isn't
+yours, for example another session's in a shared checkout. If one seems necessary, stop and ask.
 
 - Stage the paths that belong to this issue explicitly. Never `git add -A`.
 - Message: the project's commit convention if it has one (CLAUDE.md, CONTRIBUTING.md, recent `git log`).
@@ -59,7 +78,7 @@ which ones you ran. Stop on the first failure and show its output. Don't commit.
 - Skip the commit if there is nothing to commit. A branch that is already ahead still needs the push.
 - `git push -u origin HEAD`. Never force-push.
 
-## 5. Open the PR
+## 6. Open the PR
 
 If `config` reported an `existingPr`, reuse it. Otherwise open one. If the repo has a PR template
 (`.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE/`), fill that in and add the
@@ -82,7 +101,7 @@ BODY
 
 The `Closes ABC-123` line is what links the PR to the issue, so it is required.
 
-## 6. Linear
+## 7. Linear
 
 Write the completion comment to a temp file, then:
 
@@ -103,7 +122,7 @@ The transition is idempotent. If Linear's GitHub integration already moved the i
 re-saved, but the comment is still posted and the parent roll-up still runs. The JSON says which
 (`changed`, `commented`, `parent`).
 
-## 7. Report
+## 8. Report
 
 ```
 ABC-123 up for review.

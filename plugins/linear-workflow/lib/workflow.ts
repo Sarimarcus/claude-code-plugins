@@ -227,7 +227,24 @@ export async function planCycle(client: Client, opts: { teamKey?: string; projec
   }
 }
 
+export type Criterion = { text: string; checked: boolean }
+
+/** The list items under an "Acceptance Criteria" heading (any level), with their checkbox state. */
+export function parseAcceptanceCriteria(description: string): Criterion[] {
+  const lines = description.split('\n')
+  const start = lines.findIndex(l => /^#{1,6}\s*acceptance criteria\s*:?\s*$/i.test(l.trim()))
+  if (start === -1) return []
+  const out: Criterion[] = []
+  for (const line of lines.slice(start + 1)) {
+    if (/^#{1,6}\s/.test(line.trim())) break
+    const m = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[([ xX])\]\s+)?(.+?)\s*$/.exec(line)
+    if (m?.[2]) out.push({ text: m[2], checked: (m[1] ?? ' ').toLowerCase() === 'x' })
+  }
+  return out
+}
+
 export type IssueDetail = IssueSummary & {
+  acceptanceCriteria: Criterion[]
   description: string
   teamKey: string
   assignee: string | null
@@ -258,6 +275,7 @@ export async function issueDetail(client: Client, id: string): Promise<IssueDeta
   return {
     ...toSummary(raw),
     description: raw.description ?? '',
+    acceptanceCriteria: parseAcceptanceCriteria(raw.description ?? ''),
     teamKey: raw.team.key,
     assignee: raw.assignee?.name ?? null,
     cycle: raw.cycle?.number ?? null,

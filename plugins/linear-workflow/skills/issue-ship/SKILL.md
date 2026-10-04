@@ -43,6 +43,10 @@ The CLI makes the decision, so don't second-guess it:
 
 ## 3. Merge
 
+**Never**, whatever happens: `git push --force`, `git reset --hard`, `git clean`, `git checkout -- .`
+or `git restore .`, a bare `git stash`, or `git commit --amend`. Each can destroy work that isn't
+yours, for example another session's in a shared checkout. If one seems necessary, stop and ask.
+
 Print `Merging <pr.url> — ABC-123 <title>.`, then use `mergeMethod`:
 
 - `merge` / `squash` / `rebase` →
