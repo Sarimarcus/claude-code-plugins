@@ -5,7 +5,7 @@ import { createClient, toSummary } from '../lib/linear.ts'
 import type { PrInfo } from '../lib/pr.ts'
 import { evaluatePr, summarizeChecks } from '../lib/pr.ts'
 import type { TeamState } from '../lib/workflow.ts'
-import { normalizeId, parseProjectConfig, rank, resolveState, siblingsUnfinished, transition } from '../lib/workflow.ts'
+import { isActionable, normalizeId, parseProjectConfig, rank, resolveState, siblingsUnfinished, transition } from '../lib/workflow.ts'
 
 const summary = (id: string, priority: number, targetDate: string | null, createdAt: string): IssueSummary => ({
   id, identifier: id, title: id, url: '', priority, priorityLabel: '', state: { name: 'Todo', type: 'unstarted' },
@@ -47,6 +47,12 @@ describe('ranking', () => {
       summary('urgent', 1, null, '2026-05-01'),
     ]).map(i => i.identifier)
     expect(order).toEqual(['urgent', 'high-soon', 'high-late', 'high-nodate-old', 'low', 'none'])
+  })
+  test('In Review is not actionable even though Linear types it as started', async () => {
+    const inReview = { ...summary('r', 2, null, ''), state: { name: 'In Review', type: 'started' as StateType } }
+    const inProgress = { ...summary('p', 2, null, ''), state: { name: 'In Progress', type: 'started' as StateType } }
+    expect(isActionable(inReview)).toBe(false)
+    expect(isActionable(inProgress)).toBe(true)
   })
   test('only open blockers count', async () => {
     const raw = {

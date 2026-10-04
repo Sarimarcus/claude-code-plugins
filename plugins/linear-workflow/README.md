@@ -137,7 +137,7 @@ examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human
 | `config` | The resolved settings: repo root, branch, team key, whether a key was found, `.claude/linear.json` |
 | `resolve [ABC-123\|123]` | Which issue to act on: the argument, then the branch name, then your only started issue. Exit 2 with `candidates` when it can't tell |
 | `issue <ABC-123>` | The issue with its description, open blockers, branch name and every comment, verbatim |
-| `queue [--limit N]` | The active cycle's actionable issues, epics replaced by their next sub-issue, ranked |
+| `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked |
 | `plan-cycle [--limit N]` | Unscheduled, unblocked backlog issues for the active cycle, ranked |
 | `transition <ABC-123> <state> [--comment-file F] [--no-rollup]` | Idempotent status change, comment, parent roll-up |
 | `set-cycle <n> <ABC-123>…` | Put issues in a cycle and change nothing else |

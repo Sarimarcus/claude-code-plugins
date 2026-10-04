@@ -15,7 +15,8 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" queue --limit 10
 
 The CLI does the whole selection deterministically:
 - the active cycle (of `teamKey`, else the first of your teams that has one);
-- your Todo and In Progress issues in it, minus the blocked ones;
+- your Todo and In Progress issues in it, minus the blocked ones and anything in review (Linear
+  types In Review as "started" too, so the CLI excludes review states by name);
 - each in-progress epic replaced by its best unblocked sub-issue (`epic` is set on that entry);
 - ranked by priority (Urgent first, no priority last), then milestone target date, then age.
 

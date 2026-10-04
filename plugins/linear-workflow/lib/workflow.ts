@@ -58,8 +58,15 @@ export function rank(issues: IssueSummary[]): IssueSummary[] {
 
 const ACTIONABLE: StateType[] = ['unstarted', 'started']
 
+const REVIEW_NAMES = ['in review', 'review', 'to review', 'qa', 'in qa', 'code review']
+
+/** Linear files review states under `started`, like In Progress; they are not work to pick up. */
+export function isInReview(state: { name: string }): boolean {
+  return REVIEW_NAMES.includes(state.name.trim().toLowerCase())
+}
+
 export function isActionable(issue: IssueSummary): boolean {
-  return ACTIONABLE.includes(issue.state.type) && issue.blockedBy.length === 0
+  return ACTIONABLE.includes(issue.state.type) && !isInReview(issue.state) && issue.blockedBy.length === 0
 }
 
 // ---------- reads ----------
@@ -92,7 +99,7 @@ export async function queue(client: Client, opts: { teamKey?: string; limit?: nu
     `query($cycle:ID!){issues(first:250,filter:{cycle:{id:{eq:$cycle}},assignee:{isMe:{eq:true}},state:{type:{in:["unstarted","started"]}}}){nodes{${SUMMARY_FIELDS}}}}`,
     { cycle: cycle.id },
   )
-  const issues = data.issues.nodes.map(toSummary)
+  const issues = data.issues.nodes.map(toSummary).filter(i => !isInReview(i.state))
   const droppedBlocked = issues.filter(i => i.blockedBy.length > 0).map(i => i.identifier)
   const droppedEpics: QueueResult['droppedEpics'] = []
   const candidates: QueueEntry[] = []
@@ -210,7 +217,7 @@ export type TeamState = { id: string; name: string; type: StateType; position: n
 
 const ROLE_ALIASES: Record<string, string[]> = {
   'in progress': ['in progress', 'started', 'doing'],
-  'in review': ['in review', 'review', 'to review', 'qa'],
+  'in review': REVIEW_NAMES,
   done: ['done', 'completed', 'shipped', 'closed'],
 }
 
