@@ -174,3 +174,55 @@ export function conflicts(self: { checkout: string; issue: string | null }, othe
   }
   return found
 }
+
+export type SourceDecision = {
+  /** Which issue the session shows: its pin, the branch's, or none. */
+  use: 'pin' | 'branch' | 'none'
+  pinned: string | null
+  pinnedBy: string | null
+  /** The branch issue this session took on by switching to it itself. */
+  claimedBranch: string | null
+}
+
+/**
+ * Decide which issue a session shows. A session only shows an issue it took on: a pin, a branch it
+ * switched to itself, or a branch issue no other live session in the same checkout has claimed.
+ */
+export function decideSource(input: {
+  fromBranch: IssueSource | null
+  pinned: string | null
+  pinnedBy: string | null
+  previous: IssueSource | null
+  branchMoved: boolean
+  own: boolean
+  claimedBranch: string | null
+  claimedElsewhere: (id: string) => boolean
+}): SourceDecision {
+  const { fromBranch, previous, branchMoved, own, claimedElsewhere } = input
+  let { pinned, pinnedBy, claimedBranch } = input
+  if (own && fromBranch) claimedBranch = fromBranch.id
+
+  if (branchMoved && !own) {
+    // Another session moved the shared branch: keep the issue this session had claimed.
+    if (!pinned && previous && claimedBranch === previous.id) {
+      pinned = previous.id
+      pinnedBy = 'held'
+    }
+  } else if (pinned && pinnedBy === 'held' && own && fromBranch?.id === pinned) {
+    pinned = null
+    pinnedBy = null
+  } else if (pinned && branchMoved) {
+    const release = pinnedBy === 'manual' ? fromBranch !== null && fromBranch.id !== pinned : fromBranch?.id !== pinned
+    if (release) {
+      pinned = null
+      pinnedBy = null
+    }
+  }
+
+  const decided = (use: SourceDecision['use']): SourceDecision => ({ use, pinned, pinnedBy, claimedBranch })
+  if (pinned) return decided('pin')
+  if (!fromBranch) return decided('none')
+  if (claimedBranch === fromBranch.id) return decided('branch')
+  if (claimedElsewhere(fromBranch.id)) return decided('none')
+  return decided('branch')
+}

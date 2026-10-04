@@ -161,9 +161,11 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 
 - **Band above the prompt**: the current issue's id, state, priority, title, scope and parent.
 - **Details pane** (`/linear`): description, sub-issues, links, latest comments, and *Open in Linear*.
-- **Issue from your branch**: `alex/eng-2919-link-builders` → `ENG-2919`. Typing
-  `/linear-workflow:issue-start ENG-123` (or `123` when you use a single team key) also pins the
-  issue to the session. A start handed over from `issue-next` relies on the branch name instead.
+- **Only your own issue**: a session shows an issue it took on: one you pinned (`/linear ENG-123`,
+  or typing `/linear-workflow:issue-start ENG-123`), or the issue in a branch name
+  (`alex/eng-2919-link-builders` → `ENG-2919`) that this session switched to itself. A branch issue
+  that another live session in the same checkout has claimed is left to that session: yours shows
+  just the `sessions` row. A lone session opened on a feature branch still picks its issue up.
 - **Other sessions** (`sessions` row): every Claude Code session on your machine that runs the plugin,
   with its issue and checkout (`main` or the worktree name).
 - **Conflict warnings**: a toast and a red ⚠ when another session in the *same checkout* is on a

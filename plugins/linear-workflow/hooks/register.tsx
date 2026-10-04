@@ -6,6 +6,7 @@ import type { Issue, IssueSource, SessionEntry } from '../types'
 import {
   checkoutLabel,
   conflicts,
+  decideSource,
   driftSite,
   idFromText,
   isCheckout,
@@ -33,6 +34,7 @@ const pinnedByAtom = atom({ plugin: 'linear-workflow', key: 'pinnedBy' } as cons
 const warnedAtom = atom({ plugin: 'linear-workflow', key: 'warned' } as const, [])
 const othersAtom = atom({ plugin: 'linear-workflow', key: 'others' } as const, [])
 const conflictsWarnedAtom = atom({ plugin: 'linear-workflow', key: 'conflictsWarned' } as const, [])
+const claimedBranchAtom = atom({ plugin: 'linear-workflow', key: 'claimedBranch' } as const, null)
 
 type Repo = { root: string; sites: { key: string; path: string }[] }
 
@@ -109,34 +111,28 @@ async function resolveSource($: EngineInterface): Promise<IssueSource | null> {
   const pinned = await read($, pinnedAtom)
   const pinnedBy = await read($, pinnedByAtom)
   const previous = await read($, sourceAtom)
+  const claimedBranch = await read($, claimedBranchAtom)
   const branchMoved = lastBranchId !== undefined && (fromBranch?.id ?? '') !== lastBranchId
   const own = ownCheckout
   ownCheckout = false
   lastBranchId = fromBranch?.id ?? ''
-
-  // Another session moved the shared branch: keep the issue this session had.
-  if (branchMoved && !own) {
-    if (pinned) return pinnedSource(rootBranch, siteBranches, pinned, pinnedBy)
-    if (previous) {
-      await setPin($, previous.id, 'held')
-      return pinnedSource(rootBranch, siteBranches, previous.id, 'held')
-    }
-    return fromBranch
-  }
-
-  // This session switched back to the held issue's branch: it is ours again.
-  if (pinned && pinnedBy === 'held' && own && fromBranch?.id === pinned) {
-    await setPin($, null, null)
-    return fromBranch
-  }
-
-  const release =
-    pinnedBy === 'manual' ? fromBranch !== null && fromBranch.id !== pinned : fromBranch?.id !== pinned
-  if (pinned && branchMoved && release) {
-    await setPin($, null, null)
-    return fromBranch
-  }
-  return pinned ? pinnedSource(rootBranch, siteBranches, pinned, pinnedBy) : fromBranch
+  const others = await read($, othersAtom)
+  const root = repo.root
+  const d = decideSource({
+    fromBranch,
+    pinned,
+    pinnedBy,
+    previous,
+    branchMoved,
+    own,
+    claimedBranch,
+    claimedElsewhere: id => others.some(o => o.checkout === root && o.issue === id && o.claimed !== false),
+  })
+  const by = d.pinnedBy as 'command' | 'manual' | 'held' | null
+  if (d.pinned !== pinned || d.pinnedBy !== pinnedBy) await setPin($, d.pinned, by)
+  if (d.claimedBranch !== claimedBranch) await update($, claimedBranchAtom, () => d.claimedBranch)
+  if (d.use === 'pin' && d.pinned) return pinnedSource(rootBranch, siteBranches, d.pinned, by)
+  return d.use === 'branch' ? fromBranch : null
 }
 
 function pinnedSource(
@@ -193,6 +189,7 @@ async function syncSessions($: EngineInterface): Promise<void> {
     title: fresh?.title ?? null,
     state: fresh?.state ?? null,
     stateType: fresh?.stateType ?? null,
+    claimed: Boolean(await read($, pinnedAtom)) || (source !== null && (await read($, claimedBranchAtom)) === source.id),
     updatedAt: now,
   }
   await $.fs.write(`${registryDir}/${selfId}.json`, JSON.stringify(self))

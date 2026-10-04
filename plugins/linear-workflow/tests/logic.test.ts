@@ -3,6 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Issue, SessionEntry } from '../types'
 import {
   checkoutLabel,
+  decideSource,
   conflicts,
   driftSite,
   idFromBranch,
@@ -90,7 +91,7 @@ describe('sessions', () => {
   const MAIN = '/f'
   const WT = '/f/.claude/worktrees/eng-2748'
   const entry = (sessionId: string, checkout: string, issue: string | null, updatedAt = 1000): SessionEntry => ({
-    sessionId, checkout, label: checkoutLabel(checkout), issue, title: null, state: null, stateType: null, updatedAt,
+    sessionId, checkout, label: checkoutLabel(checkout), issue, title: null, state: null, stateType: null, claimed: true, updatedAt,
   })
 
   test('checkout commands', async () => {
@@ -120,5 +121,39 @@ describe('sessions', () => {
   test('worktree on another issue, or a session with no issue, does not clash', async () => {
     expect(conflicts({ checkout: MAIN, issue: 'ENG-1' }, [entry('a', WT, 'ENG-2'), entry('b', MAIN, null)])).toEqual([])
     expect(conflicts({ checkout: MAIN, issue: null }, [entry('a', MAIN, 'ENG-2')])).toEqual([])
+  })
+})
+
+describe('which issue a session shows', () => {
+  const branch = (id: string) => ({ id, from: 'root' as const, detail: `x/${id.toLowerCase()}-y` })
+  const base = {
+    fromBranch: null, pinned: null, pinnedBy: null, previous: null,
+    branchMoved: false, own: false, claimedBranch: null, claimedElsewhere: () => false,
+  }
+  test('an idle session does not adopt a branch another session claimed', async () => {
+    const d = decideSource({ ...base, fromBranch: branch('ENG-1'), claimedElsewhere: id => id === 'ENG-1' })
+    expect(d.use).toBe('none')
+  })
+  test('nobody claims it: a lone session on a feature branch shows it', async () => {
+    expect(decideSource({ ...base, fromBranch: branch('ENG-1') }).use).toBe('branch')
+  })
+  test('switching to a branch yourself claims it, even if another session also lists it', async () => {
+    const d = decideSource({ ...base, fromBranch: branch('ENG-1'), branchMoved: true, own: true, claimedElsewhere: () => true })
+    expect(d.use).toBe('branch')
+    expect(d.claimedBranch).toBe('ENG-1')
+  })
+  test('a foreign branch move holds a claimed issue, but not an adopted one', async () => {
+    const claimed = decideSource({ ...base, fromBranch: branch('ENG-2'), previous: branch('ENG-1'), branchMoved: true, claimedBranch: 'ENG-1' })
+    expect(claimed.use).toBe('pin')
+    expect(claimed.pinnedBy).toBe('held')
+    const adopted = decideSource({ ...base, fromBranch: branch('ENG-2'), previous: branch('ENG-1'), branchMoved: true, claimedElsewhere: () => true })
+    expect(adopted.use).toBe('none')
+    expect(adopted.pinned).toBe(null)
+  })
+  test('a pin wins; held clears when you switch back to its branch', async () => {
+    expect(decideSource({ ...base, fromBranch: branch('ENG-2'), pinned: 'ENG-9', pinnedBy: 'manual' }).use).toBe('pin')
+    const back = decideSource({ ...base, fromBranch: branch('ENG-1'), pinned: 'ENG-1', pinnedBy: 'held', branchMoved: true, own: true })
+    expect(back.pinned).toBe(null)
+    expect(back.use).toBe('branch')
   })
 })

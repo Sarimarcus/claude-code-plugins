@@ -30,6 +30,8 @@ export type SessionEntry = {
   title: string | null
   state: string | null
   stateType: string | null
+  /** Pinned, or on a branch this session switched to itself. */
+  claimed: boolean
   updatedAt: number
 }
 
@@ -45,6 +47,7 @@ declare module 'claude-code' {
       warned: string[]
       others: SessionEntry[]
       conflictsWarned: string[]
+      claimedBranch: string | null
     }
   }
 }
