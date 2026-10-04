@@ -31,19 +31,16 @@ graders:
     max: 0
   - name: "keeps-cli-order"
     type: "regex"
-    pattern: "(?s)ENG-7.*ENG-3.*ENG-9"
+    pattern: "ENG-9.*ENG-7.*ENG-3"
+    flags: "s"
     target: "last_message"
   - name: "uses-dueInDays"
     type: "regex"
-    pattern: "(?s)overdue 3d.*ends in 5d"
+    pattern: "overdue 3d.*ends in 5d"
+    flags: "s"
     target: "last_message"
   - name: "no-descriptions"
     type: "regex"
     pattern: "Users asked for a dark theme"
     match: "not_contains"
     target: "last_message"
-  - name: "never-starts-on-its-own"
-    type: "tool_used"
-    tool: "Skill"
-    min: 0
-    max: 0

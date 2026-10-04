@@ -190,3 +190,10 @@ export function decideSource(input: {
   if (claimedElsewhere(fromBranch.id)) return decided('none')
   return decided('branch')
 }
+
+/** Whether a tool call may have changed Linear, so the issue is worth fetching again. */
+export function touchesLinear(tool: string, input: { command?: unknown; subagent_type?: unknown }): boolean {
+  if (tool === 'Bash') return /linear-workflow\.ts"?\s+(transition|set-cycle)\b/.test(String(input.command ?? ''))
+  if (tool === 'Agent') return /linear-manager/.test(String(input.subagent_type ?? ''))
+  return /^mcp__.*linear.*__(save|create|update)_(issue|comment)$/i.test(tool)
+}

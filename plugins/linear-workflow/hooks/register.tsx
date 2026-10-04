@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { ElementTable, EngineInterface, Register } from 'claude-code'
 
-import { createClient } from '../lib/linear.ts'
+import { createClient, LinearError } from '../lib/linear.ts'
 import {
   checkoutLabel,
   conflicts,
@@ -10,6 +10,7 @@ import {
   findRoot,
   idFromText,
   isCheckout,
+  touchesLinear,
   liveOthers,
   pickSource,
   resolveApiKey,
@@ -50,6 +51,7 @@ let config = {
 }
 let lastBranchId: string | undefined
 let ownCheckout = false
+let linearTouched = false
 let registryDir: string | null = null
 let inflight: Promise<void> = Promise.resolve()
 
@@ -134,6 +136,7 @@ async function fetchIssue($: EngineInterface, id: string): Promise<Issue | strin
   try {
     return toPaneIssue(await issueDetail(linear($), id))
   } catch (err) {
+    if (err instanceof LinearError) return err.message.startsWith(id) ? err.message : `${id}: ${err.message}`
     return `${id}: ${err instanceof Error ? err.message : 'fetch failed'}`
   }
 }
@@ -356,7 +359,10 @@ export const register: Register = (on, options) => {
 
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
-    await refresh($, false)
+    // Re-fetch when this turn wrote to Linear, so the band shows the new state now, not at the next poll.
+    const force = linearTouched
+    linearTouched = false
+    await refresh($, force)
     return done
   })
 
@@ -369,6 +375,7 @@ export const register: Register = (on, options) => {
 
   on('tool.call', async ($, e, next) => {
     const tool = String(e.tool)
+    if (touchesLinear(tool, e as unknown as { command?: unknown; subagent_type?: unknown })) linearTouched = true
     if (repo && (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit' || tool === 'NotebookEdit')) {
       const input = e as unknown as { file_path?: string; notebook_path?: string }
       const path = input.file_path ?? input.notebook_path ?? ''

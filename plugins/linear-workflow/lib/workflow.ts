@@ -345,7 +345,9 @@ export async function transition(client: Client, id: string, target: string, com
     const siblings = issue.parent.children.nodes.map(s => (s.identifier === issue.identifier ? { ...s, state: { name: state.name, type: state.type } } : s))
     const unfinished = siblingsUnfinished(siblings, role)
     // The parent may live in another team: move it to that team's state for the same role.
-    const parentState = resolveState(issue.parent.team.states.nodes, role === 'done' ? 'Done' : 'In Review')
+    const resolved = resolveState(issue.parent.team.states.nodes, role === 'done' ? 'Done' : 'In Review')
+    // resolveState falls back to an In Progress-like state; a review roll-up needs a real review state.
+    const parentState = role === 'review' && resolved && !isInReview(resolved) ? undefined : resolved
     const parentChanged = unfinished.length === 0 && parentState !== undefined && issue.parent.state.id !== parentState.id
     if (parentChanged && parentState) {
       await setState(client, issue.parent.id, parentState.id)

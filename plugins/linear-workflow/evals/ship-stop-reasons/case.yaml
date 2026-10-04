@@ -37,6 +37,6 @@ graders:
     max: 0
   - name: "names-both-reasons"
     type: "regex"
-    pattern: "(?s)(draft.*unit-tests|unit-tests.*draft)"
-    flags: "i"
+    pattern: "draft.*unit-tests|unit-tests.*draft"
+    flags: "is"
     target: "last_message"

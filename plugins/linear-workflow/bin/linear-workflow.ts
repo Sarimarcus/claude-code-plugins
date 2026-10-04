@@ -80,8 +80,8 @@ async function context(flags: Record<string, string | true>) {
   const configText = readIfExists(`${root}/.claude/linear.json`)
   const config = parseProjectConfig(configText)
   const apiKey = resolveApiKey({ env: process.env.LINEAR_API_KEY, envFileText: readIfExists(`${root}/.env`) })
-  const explicitTeam = typeof flags.team === 'string' ? flags.team.toUpperCase() : config.teamKey?.toUpperCase()
-  return { root, config, configText, apiKey, teamKey: explicitTeam }
+  const teamKey = typeof flags.team === 'string' ? flags.team.toUpperCase() : undefined
+  return { root, config, configText, apiKey, teamKey }
 }
 
 type Ctx = Awaited<ReturnType<typeof context>>
@@ -94,7 +94,7 @@ function client(apiKey: string | undefined) {
   }, apiKey)
 }
 
-/** Same order as the mod: plugin option (exported by the mod), linear.json, your teams. */
+/** `--team`, else the mod's order: plugin option (exported by the mod), linear.json, your teams. */
 async function teamKeys(ctx: Ctx): Promise<string[]> {
   if (ctx.teamKey) return [ctx.teamKey]
   return resolveTeamKeys({
@@ -102,6 +102,13 @@ async function teamKeys(ctx: Ctx): Promise<string[]> {
     configText: ctx.configText,
     fetchMine: ctx.apiKey ? () => myTeamKeys(client(ctx.apiKey)) : undefined,
   })
+}
+
+/** The one team whose cycle queue/plan-cycle/set-cycle use: `--team`, else a single configured key. */
+async function cycleTeam(ctx: Ctx): Promise<string | undefined> {
+  if (ctx.teamKey) return ctx.teamKey
+  const configured = await resolveTeamKeys({ option: process.env.LINEAR_WORKFLOW_TEAM_KEYS, configText: ctx.configText })
+  return configured.length === 1 ? configured[0] : undefined
 }
 
 function requireId(raw: string | undefined, singleKey: string | undefined): string {
@@ -160,7 +167,8 @@ async function main(argv: string[]): Promise<Outcome> {
       type Pr = { number: number; url: string; state: string }
       let existingPr: Pr | null
       try {
-        existingPr = JSON.parse(gh(['pr', 'view', '--json', 'number,url,state'])) as Pr
+        const pr = JSON.parse(gh(['pr', 'view', '--json', 'number,url,state'])) as Pr
+        existingPr = pr.state === 'OPEN' ? pr : null
       } catch {
         existingPr = null
       }
@@ -209,7 +217,7 @@ async function main(argv: string[]): Promise<Outcome> {
     }
 
     case 'queue': {
-      const r = await queue(client(ctx.apiKey), { teamKey: ctx.teamKey, limit, today: today() })
+      const r = await queue(client(ctx.apiKey), { teamKey: await cycleTeam(ctx), limit, today: today() })
       return {
         out: r,
         summary: r.cycle
@@ -219,7 +227,7 @@ async function main(argv: string[]): Promise<Outcome> {
     }
 
     case 'plan-cycle': {
-      const r = await planCycle(client(ctx.apiKey), { teamKey: ctx.teamKey, project: ctx.config.project, limit })
+      const r = await planCycle(client(ctx.apiKey), { teamKey: await cycleTeam(ctx), project: ctx.config.project, limit })
       return {
         out: r,
         summary: r.cycle
@@ -251,7 +259,7 @@ async function main(argv: string[]): Promise<Outcome> {
       const key = await singleKey()
       const ids = positional.slice(1).map(p => requireId(p, key))
       if (ids.length === 0) throw new Error('No issue ids given')
-      const r = await setCycle(client(ctx.apiKey), ctx.teamKey, n, ids)
+      const r = await setCycle(client(ctx.apiKey), await cycleTeam(ctx), n, ids)
       return {
         out: r,
         summary: `set-cycle: #${n}, ${ids.length} issue(s): ${r.set.length} set, ${r.already.length} already there, ${r.failed.length} failed`,

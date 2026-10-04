@@ -176,7 +176,9 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
   session keeps its issue (`held`). It follows the branch again only after your own session switches branches.
 - **Scope drift** (optional): with a sub-project registry, an edit outside the issue's labelled
   sub-projects raises a toast.
-- A toast when the issue changes state in Linear.
+- **Stays current**: the issue is fetched again at the end of any turn that wrote to Linear (a
+  skill's transition, the `linear-manager` agent, a Linear MCP write), and every `pollMinutes`
+  otherwise. A toast says when its state changed.
 
 | `/linear` | What it does |
 | --- | --- |

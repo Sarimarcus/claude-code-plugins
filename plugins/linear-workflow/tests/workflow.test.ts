@@ -152,6 +152,14 @@ describe('transition', () => {
     const parentUpdate = calls.find(c => c.query.includes('issueUpdate') && c.variables.id === 'id-p')
     expect(parentUpdate?.variables.state).toBe('o-done')
   })
+  test('no review roll-up into a parent team that has no review state', async () => {
+    const noReview: TeamState[] = STATES.filter(st => st.id !== 's-rev')
+    const { client, calls } = fakeLinear({ state: 's-prog', siblings: [], parentState: 's-prog', parentStates: noReview })
+    const r = await transition(client, 'ENG-1', 'In Review')
+    expect(r.parent?.rolledUp).toBe(false)
+    expect(r.parent?.note?.includes('review')).toBe(true)
+    expect(calls.some(c => c.query.includes('issueUpdate') && c.variables.id === 'id-p')).toBe(false)
+  })
   test('a review state named QA still rolls the parent up', async () => {
     const qaStates: TeamState[] = STATES.map(s => (s.id === 's-rev' ? { ...s, name: 'QA' } : s))
     const { client } = fakeLinear({ state: 's-prog', siblings: [], parentState: 's-prog', parentStates: qaStates })

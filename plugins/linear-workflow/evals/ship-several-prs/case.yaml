@@ -37,7 +37,8 @@ graders:
     max: 0
   - name: "lists-both"
     type: "regex"
-    pattern: "(?s)(#?41.*#?44|#?44.*#?41)"
+    pattern: "41.*44|44.*41"
+    flags: "s"
     target: "last_message"
   - name: "asks-which"
     type: "llm"

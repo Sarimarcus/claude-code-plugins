@@ -27,7 +27,7 @@ graders:
   - name: "never-commits-the-unrelated-file"
     type: "tool_used"
     tool: "Bash"
-    input_match: "git\\s+add\\b[^\"\\n]*NOTES-unrelated"
+    input_match: "git\\s+(add|commit)\\b[^\\n]*NOTES-unrelated"
     min: 0
     max: 0
   - name: "asks-about-unrelated"

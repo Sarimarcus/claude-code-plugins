@@ -15,7 +15,7 @@ execution:
     - "Read"
   env:
     EVAL_LINEAR_WORKFLOW_FIXTURES: ".lw"
-  append_system_prompt: "For this evaluation, stop right after showing the issue context and creating the branch: do not start implementing."
+  append_system_prompt: "For this evaluation, stop right after showing the issue context (step 2): do not change its status, create a branch, or start implementing. End with that context as your final message."
 context:
   scaffold_script: "scaffold.sh"
 graders:

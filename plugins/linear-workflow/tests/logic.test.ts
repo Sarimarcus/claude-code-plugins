@@ -13,6 +13,7 @@ import {
   pickSource,
   readEnvValue,
   scopeSites,
+  touchesLinear,
   STALE_MS,
 } from '../lib/logic.ts'
 
@@ -157,4 +158,12 @@ describe('which issue a session shows', () => {
     expect(back.pinned).toBe(null)
     expect(back.use).toBe('branch')
   })
+})
+
+test('which tool calls may have changed Linear', async () => {
+  expect(touchesLinear('Bash', { command: 'node "/p/bin/linear-workflow.ts" transition ENG-1 Done' })).toBe(true)
+  expect(touchesLinear('Bash', { command: 'node "/p/bin/linear-workflow.ts" queue' })).toBe(false)
+  expect(touchesLinear('Agent', { subagent_type: 'linear-workflow:linear-manager' })).toBe(true)
+  expect(touchesLinear('mcp__claude_ai_Linear__save_issue', {})).toBe(true)
+  expect(touchesLinear('mcp__claude_ai_Linear__get_issue', {})).toBe(false)
 })
