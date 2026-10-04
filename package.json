@@ -10,7 +10,9 @@
     "typecheck": "tsc -p plugins/linear-workflow && tsc -p plugins/linear-workflow/bin",
     "test": "cd plugins/linear-workflow && claude plugin test .",
     "eval": "cd plugins/linear-workflow && rm -rf evals/results/latest; claude plugin eval . -j 4 --ablation none --allow-tools Bash --scaffold --trust-plugin --no-publish --output-dir evals/results/latest; node evals/report.mjs evals/results/latest/aggregate-result.json",
-    "eval:report": "node plugins/linear-workflow/evals/report.mjs"
+    "eval:report": "node plugins/linear-workflow/evals/report.mjs",
+    "release": "node scripts/release.mjs",
+    "release:check": "node scripts/release-check.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

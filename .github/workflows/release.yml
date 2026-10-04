@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags: ['*-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check tag, manifests and CHANGELOG agree; extract notes
+        run: node scripts/release-check.mjs "$GITHUB_REF_NAME" --notes-out notes.md
+      - name: Package the plugin
+        id: pkg
+        run: |
+          plugin="${GITHUB_REF_NAME%-v*}"
+          version="${GITHUB_REF_NAME##*-v}"
+          file="$plugin-$version.tar.gz"
+          git archive --format=tar.gz --prefix="$plugin/" -o "$file" "HEAD:plugins/$plugin"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "title=$plugin $version" >> "$GITHUB_OUTPUT"
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.pkg.outputs.file }}" --title "${{ steps.pkg.outputs.title }}" --notes-file notes.md --verify-tag
