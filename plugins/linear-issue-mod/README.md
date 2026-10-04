@@ -30,10 +30,10 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 It also includes an issue workflow, from picking the issue to the merged PR:
 
 ```
-/issue-next → /issue-start ENG-123 → (work) → /issue-review → /issue-ship
+/linear-issue-mod:issue-next → /linear-issue-mod:issue-start ENG-123 → (work) → /linear-issue-mod:issue-review → /linear-issue-mod:issue-ship
 ```
 
-The workflow uses a `linear-manager` subagent, so issue payloads stay out of your main conversation.
+The workflow uses a `linear-manager` subagent (`linear-issue-mod:linear-manager`), so issue payloads stay out of your main conversation.
 
 ## Install
 
@@ -50,7 +50,7 @@ commands and `linear-manager` need two more things:
 
 - **Linear MCP server**: the Linear connector on claude.ai, or
   `claude mcp add --transport http linear https://mcp.linear.app/mcp`
-- **GitHub CLI** (`gh`), logged in, for `/issue-review` and `/issue-ship`
+- **GitHub CLI** (`gh`), logged in, for `/linear-issue-mod:issue-review` and `/linear-issue-mod:issue-ship`
 
 Provide a Linear personal API key (Linear → Settings → Security & access) in one of
 three ways, checked in this order:
@@ -65,18 +65,19 @@ three ways, checked in this order:
 
 | Command | What it does |
 | --- | --- |
-| `/issue-next` | Ranks the active cycle's unblocked issues (priority, then milestone date, then age) and offers to start the top one |
-| `/issue-start ENG-123` | Moves the issue to In Progress, shows its context and comments, creates Linear's branch for it, and starts work |
-| `/issue-review [ENG-123]` | Runs your checks, commits, pushes the branch, opens a PR with `Closes ENG-123`, and moves the issue to In Review |
-| `/issue-ship [ENG-123]` | Checks the PR (not a draft, no conflicts, checks green), merges it, verifies the merge, and moves the issue to Done |
-| `/issue-plan-cycle` | Lists unscheduled, unblocked backlog issues; you choose which to add to the active cycle |
+| `/linear-issue-mod:issue-next` | Ranks the active cycle's unblocked issues (priority, then milestone date, then age) and offers to start the top one |
+| `/linear-issue-mod:issue-start ENG-123` | Moves the issue to In Progress, shows its context and comments, creates Linear's branch for it, and starts work |
+| `/linear-issue-mod:issue-review [ENG-123]` | Runs your checks, commits, pushes the branch, opens a PR with `Closes ENG-123`, and moves the issue to In Review |
+| `/linear-issue-mod:issue-ship [ENG-123]` | Checks the PR (not a draft, no conflicts, checks green), merges it, verifies the merge, and moves the issue to Done |
+| `/linear-issue-mod:issue-plan-cycle` | Lists unscheduled, unblocked backlog issues; you choose which to add to the active cycle |
 
-Without an id, `/issue-review` and `/issue-ship` use the session's issue, then the branch name.
-Running `/issue-review` or `/issue-ship` yourself authorizes the push or merge for that one issue.
+Without an id, `/linear-issue-mod:issue-review` and `/linear-issue-mod:issue-ship` use the session's issue, then the branch name.
+Running `/linear-issue-mod:issue-review` or `/linear-issue-mod:issue-ship` yourself authorizes the push or merge for that one issue.
 Nothing ever force-pushes or pushes the base branch directly.
 
-Every command can also be run with the plugin's namespace (`/linear-issue-mod:issue-start`).
-That helps when your project defines commands with the same names.
+Claude Code namespaces plugin commands and agents, so they appear as `/linear-issue-mod:issue-start`
+(type `/issue` and pick it from the menu) and the agent as `linear-issue-mod:linear-manager`.
+They don't conflict with commands or agents of the same name in your project.
 
 ### Band and pane
 
@@ -95,7 +96,7 @@ Set from the `/config` menu or under `pluginConfigs.linear-issue-mod` in setting
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `linearApiKey` | — | Linear API key (secret) |
-| `teamKeys` | *(auto)* | Comma-separated team keys to find in branch names. Left empty, your workspace's keys are fetched from Linear. |
+| `teamKeys` | *(auto)* | Comma-separated team keys to find in branch names. Left empty: `teamKey` from `.claude/linear.json`, else your workspace's keys fetched from Linear. |
 | `registryFile` | `sites.json` | Sub-project registry used for scope and drift. If the file is missing, those features are off. |
 | `pinCommand` | `issue-start` | Slash command (without `/`) whose first argument is an issue id; running it pins that issue to the session. Empty disables it. |
 | `pollMinutes` | `5` | How often the issue is refreshed |

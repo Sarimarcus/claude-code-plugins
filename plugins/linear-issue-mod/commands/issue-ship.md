@@ -3,15 +3,15 @@ description: Ship a Linear issue — merge its reviewed PR, update the base bran
 argument-hint: "[<ABC-123>]"
 ---
 
-# /issue-ship — merge the PR and close the issue
+# /linear-issue-mod:issue-ship — merge the PR and close the issue
 
-Lands the PR that `/issue-review` opened. Typing `/issue-ship <ABC-123>` yourself authorizes merging
+Lands the PR that `/linear-issue-mod:issue-review` opened. Typing `/linear-issue-mod:issue-ship <ABC-123>` yourself authorizes merging
 **that issue's PR**. That authorization does not extend to anything else. If the id was
 auto-discovered rather than typed, confirm it once before merging.
 
 ## 1. Resolve the issue
 
-Same as `/issue-review` step 1: the argument, then this session's issue, then the branch name, then
+Same as `/linear-issue-mod:issue-review` step 1: the argument, then this session's issue, then the branch name, then
 Linear. Read `.claude/linear.json` (`baseBranch`, `mergeMethod`, `deleteBranch`).
 
 ## 2. Find the PR and check that it can land
@@ -22,12 +22,12 @@ gh pr list --state open --search "ABC-123 in:title,body" --json number,url,headR
 
 Fall back to `gh pr view <current branch>`. Then:
 
-- **No open PR** → stop: `No open PR for ABC-123. Run /issue-review ABC-123 first.` Never merge
+- **No open PR** → stop: `No open PR for ABC-123. Run /linear-issue-mod:issue-review ABC-123 first.` Never merge
   unreviewed work by pushing to the base branch.
 - **More than one** → list them and ask which to merge.
 - **Draft, conflicts (`mergeable: CONFLICTING`), or changes requested** → stop and say which.
 - **Uncommitted or unpushed changes on the PR branch** → stop: they are not in the PR. Run
-  `/issue-review` again to push them.
+  `/linear-issue-mod:issue-review` again to push them.
 - Show the PR's check status (`gh pr checks <number>`). If checks failed, stop. If they are still
   pending, ask whether to wait.
 
@@ -60,7 +60,7 @@ Then update the local checkout: `git switch <base> && git pull --ff-only`.
 
 ## 5. Linear
 
-Spawn `linear-manager`:
+Spawn `linear-issue-mod:linear-manager`:
 
 > Move ABC-123 to "Done" (no-op if Linear's GitHub integration already did). Add a comment:
 > Changed: <one line> · Files: merge commit `<sha>` · Verified: PR <url> merged, checks <status> ·

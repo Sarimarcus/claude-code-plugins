@@ -3,18 +3,18 @@ description: Put a Linear issue up for review — run the project's checks, comm
 argument-hint: "[<ABC-123>]"
 ---
 
-# /issue-review — open the PR for a Linear issue
+# /linear-issue-mod:issue-review — open the PR for a Linear issue
 
 Checks → commit → push the feature branch → PR with `Closes ABC-123` → In Review. Nothing gets
-merged or deployed. That is `/issue-ship`.
+merged or deployed. That is `/linear-issue-mod:issue-ship`.
 
 Running this command authorizes pushing **this issue's feature branch**. It never pushes the base branch.
 
 ## 1. Resolve the issue
 
 - An id in `$ARGUMENTS` (`ABC-123`, `123`) → use it.
-- No argument → use the issue this session started with `/issue-start`. Otherwise take the id from
-  the current branch name. Otherwise ask `linear-manager` for your issues in In Progress or In
+- No argument → use the issue this session started with `/linear-issue-mod:issue-start`. Otherwise take the id from
+  the current branch name. Otherwise ask `linear-issue-mod:linear-manager` for your issues in In Progress or In
   Review: use it if there is exactly one, else stop and list the candidates.
 - If the id was discovered rather than typed, print `Resolved ABC-123 <title> (from <source>)`
   before anything else.
@@ -24,7 +24,7 @@ Read `.claude/linear.json` if it exists (`baseBranch`, `checks`, `teamKey`).
 ## 2. Pre-flight
 
 - Current branch is the base branch (or `main`/`master`) → stop: there is no branch to review. Run
-  `/issue-start` first or switch to the issue's branch.
+  `/linear-issue-mod:issue-start` first or switch to the issue's branch.
 - Show `git status --short`. If files that clearly don't belong to this issue are modified, ask
   which ones to include. Never commit them silently.
 
@@ -65,11 +65,11 @@ The `Closes ABC-123` line is what links the PR to the issue, so it is required.
 
 ## 6. Linear
 
-Spawn `linear-manager`:
+Spawn `linear-issue-mod:linear-manager`:
 
 > Move ABC-123 to "In Review" (no-op if Linear's GitHub integration already did). Add a completion
 > comment: Changed: <one line> · Files: see commit `<sha>` · Verified: <checks and their result> ·
-> Next: review <PR URL>, then `/issue-ship ABC-123`.
+> Next: review <PR URL>, then `/linear-issue-mod:issue-ship ABC-123`.
 
 ## 7. Report
 
@@ -79,5 +79,5 @@ ABC-123 up for review.
   PR:     <url>
   Checks: <commands> ✓
   Linear: In Review, comment posted
-  Next:   /issue-ship ABC-123
+  Next:   /linear-issue-mod:issue-ship ABC-123
 ```

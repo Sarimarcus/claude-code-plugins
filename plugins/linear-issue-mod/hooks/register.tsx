@@ -249,7 +249,17 @@ async function linearQuery<T>($: EngineInterface, query: string, variables: Reco
 
 async function loadTeamKeys($: EngineInterface): Promise<string[]> {
   const configured = parseTeamKeys(config.teamKeys)
-  if (configured.length || !apiKey) return configured
+  if (configured.length) return configured
+  if (repo) {
+    try {
+      const project = JSON.parse(await $.fs.read(`${repo.root}/.claude/linear.json`)) as { teamKey?: string }
+      const fromProject = parseTeamKeys(project.teamKey)
+      if (fromProject.length) return fromProject
+    } catch {
+      // no project settings
+    }
+  }
+  if (!apiKey) return []
   try {
     const body = await linearQuery<{ data?: { teams?: { nodes: { key: string }[] } } }>($, TEAMS_QUERY)
     return parseTeamKeys((body.data?.teams?.nodes ?? []).map(t => t.key).join(','))
