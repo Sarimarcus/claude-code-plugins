@@ -3,9 +3,9 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Fetcher, IssueSummary, StateType } from '../lib/linear.ts'
 import { createClient, toSummary } from '../lib/linear.ts'
 import type { PrInfo } from '../lib/pr.ts'
-import { evaluatePr, summarizeChecks } from '../lib/pr.ts'
+import { belongsTo, evaluateMerged, evaluatePr, summarizeChecks } from '../lib/pr.ts'
 import type { TeamState } from '../lib/workflow.ts'
-import { isActionable, normalizeId, parseProjectConfig, rank, resolveState, siblingsUnfinished, transition } from '../lib/workflow.ts'
+import { daysUntil, isActionable, normalizeId, parseProjectConfig, rank, resolveState, resolveTeamKeys, siblingsUnfinished, transition } from '../lib/workflow.ts'
 
 const summary = (id: string, priority: number, targetDate: string | null, createdAt: string): IssueSummary => ({
   id, identifier: id, title: id, url: '', priority, priorityLabel: '', state: { name: 'Todo', type: 'unstarted' },
@@ -28,6 +28,17 @@ describe('ids and config', () => {
     expect(normalizeId('#12', 'eng')).toBe('ENG-12')
     expect(normalizeId('12')).toBe(undefined)
     expect(normalizeId('refresh', 'ENG')).toBe(undefined)
+  })
+  test('team keys: option, then linear.json, then your teams', async () => {
+    expect(await resolveTeamKeys({ option: ' eng, ops  web-1 ' })).toEqual(['ENG', 'OPS'])
+    expect(await resolveTeamKeys({ configText: '{"teamKey":"web"}', fetchMine: async () => ['X'] })).toEqual(['WEB'])
+    expect(await resolveTeamKeys({ configText: '{not json', fetchMine: async () => ['abc'] })).toEqual(['ABC'])
+    expect(await resolveTeamKeys({ fetchMine: async () => { throw new Error('offline') } })).toEqual([])
+  })
+  test('daysUntil', async () => {
+    expect(daysUntil('2026-10-11', '2026-10-04')).toBe(7)
+    expect(daysUntil('2026-10-01T00:00:00Z', '2026-10-04')).toBe(-3)
+    expect(daysUntil(null, '2026-10-04')).toBe(null)
   })
   test('parseProjectConfig keeps known, well-typed fields only', async () => {
     const c = parseProjectConfig('{"teamKey":"ENG","checks":["npm test",3],"mergeMethod":"yolo","deleteBranch":true}')
@@ -79,16 +90,17 @@ describe('states and roll-up', () => {
   })
   test('a sibling in review is unfinished for Done, finished for In Review', async () => {
     const sibs = [
-      { identifier: 'A', state: { id: 's-done', type: 'completed' as StateType } },
-      { identifier: 'B', state: { id: 's-rev', type: 'started' as StateType } },
-      { identifier: 'C', state: { id: 's-cancel', type: 'canceled' as StateType } },
+      { identifier: 'A', state: { name: 'Done', type: 'completed' as StateType } },
+      { identifier: 'B', state: { name: 'QA', type: 'started' as StateType } },
+      { identifier: 'C', state: { name: 'Canceled', type: 'canceled' as StateType } },
+      { identifier: 'D', state: { name: 'In Progress', type: 'started' as StateType } },
     ]
-    expect(siblingsUnfinished(sibs, STATES[4]!)).toEqual(['B'])
-    expect(siblingsUnfinished(sibs, STATES[3]!)).toEqual([])
+    expect(siblingsUnfinished(sibs, 'done')).toEqual(['B', 'D'])
+    expect(siblingsUnfinished(sibs, 'review')).toEqual(['D'])
   })
 })
 
-function fakeLinear(issue: { state: string; siblings: { identifier: string; state: string }[]; parentState: string }) {
+function fakeLinear(issue: { state: string; siblings: { identifier: string; state: string }[]; parentState: string; parentStates?: TeamState[] }) {
   const calls: { query: string; variables: Record<string, unknown> }[] = []
   const byId = (id: string) => STATES.find(s => s.id === id)!
   const fetcher: Fetcher = async (_url, init) => {
@@ -101,9 +113,10 @@ function fakeLinear(issue: { state: string; siblings: { identifier: string; stat
       data = { issue: {
         id: 'id-1', identifier: 'ENG-1', state: { ...byId(issue.state) },
         team: { states: { nodes: STATES } },
-        parent: { id: 'id-p', identifier: 'ENG-0', state: { id: issue.parentState, name: byId(issue.parentState).name },
-          children: { nodes: [{ identifier: 'ENG-1', state: { id: issue.state, type: byId(issue.state).type } },
-            ...issue.siblings.map(s => ({ identifier: s.identifier, state: { id: s.state, type: byId(s.state).type } }))] } },
+        parent: { id: 'id-p', identifier: 'ENG-0', state: { id: issue.parentState, name: issue.parentState },
+          team: { states: { nodes: issue.parentStates ?? STATES } },
+          children: { nodes: [{ identifier: 'ENG-1', state: { name: byId(issue.state).name, type: byId(issue.state).type } },
+            ...issue.siblings.map(s => ({ identifier: s.identifier, state: { name: byId(s.state).name, type: byId(s.state).type } }))] } },
       } }
     }
     return { status: 200, text: JSON.stringify({ data }) }
@@ -127,6 +140,23 @@ describe('transition', () => {
     expect(r.changed).toBe(true)
     expect(r.parent?.unfinished).toEqual(['ENG-2'])
     expect(calls.filter(c => c.query.includes('issueUpdate')).map(c => c.variables.id)).toEqual(['id-1'])
+  })
+  test('a parent in another team moves to that team\'s Done state', async () => {
+    const opsStates: TeamState[] = [
+      { id: 'o-prog', name: 'Doing', type: 'started', position: 0 },
+      { id: 'o-done', name: 'Shipped', type: 'completed', position: 1 },
+    ]
+    const { client, calls } = fakeLinear({ state: 's-rev', siblings: [], parentState: 'o-prog', parentStates: opsStates })
+    const r = await transition(client, 'ENG-1', 'Done')
+    expect(r.parent?.changed).toBe(true)
+    const parentUpdate = calls.find(c => c.query.includes('issueUpdate') && c.variables.id === 'id-p')
+    expect(parentUpdate?.variables.state).toBe('o-done')
+  })
+  test('a review state named QA still rolls the parent up', async () => {
+    const qaStates: TeamState[] = STATES.map(s => (s.id === 's-rev' ? { ...s, name: 'QA' } : s))
+    const { client } = fakeLinear({ state: 's-prog', siblings: [], parentState: 's-prog', parentStates: qaStates })
+    const r = await transition(client, 'ENG-1', 'QA')
+    expect(r.parent?.rolledUp).toBe(true)
   })
   test('unknown state name is an error, nothing written', async () => {
     const { client, calls } = fakeLinear({ state: 's-prog', siblings: [], parentState: 's-prog' })
@@ -166,5 +196,30 @@ describe('pr-check', () => {
   })
   test('summarizeChecks', async () => {
     expect(summarizeChecks([{ context: 'lint', state: 'SUCCESS' }, { context: 'e2e', state: 'PENDING' }])).toEqual({ total: 2, failed: [], pending: ['e2e'] })
+  })
+})
+
+describe('pr ownership and landing', () => {
+  test('a PR belongs to the issue by branch, title or a closing keyword, not a mere mention', async () => {
+    expect(belongsTo('ENG-12', { title: 'x', headRefName: 'alex/eng-12-thing' })).toBe(true)
+    expect(belongsTo('ENG-12', { title: 'Fix x (ENG-12)', headRefName: 'b' })).toBe(true)
+    expect(belongsTo('ENG-12', { title: 'x', headRefName: 'b', body: 'Closes ENG-12.' })).toBe(true)
+    expect(belongsTo('ENG-12', { title: 'x', headRefName: 'b', body: 'Follow-up to ENG-12' })).toBe(false)
+    expect(belongsTo('ENG-12', { title: 'ENG-120 thing', headRefName: 'eng-120-x' })).toBe(false)
+  })
+  test('a PR that only mentions the issue is not merged', async () => {
+    const other = pr({ title: 'Other (ENG-15)', headRefName: 'eng-15-x', body: 'follow-up to ENG-1' })
+    expect(evaluatePr('ENG-1', [other], null).verdict).toBe('stop')
+  })
+  test('--pr picks one of several, and refuses a number not found', async () => {
+    const two = [pr(), pr({ number: 8 })]
+    expect(evaluatePr('ENG-1', two, null).verdict).toBe('stop')
+    expect(evaluatePr('ENG-1', two, null, 8).pr?.number).toBe(8)
+    expect(evaluatePr('ENG-1', two, null, 99).verdict).toBe('stop')
+  })
+  test('landed only when MERGED with a merge commit', async () => {
+    expect(evaluateMerged({ state: 'MERGED', mergeCommit: { oid: 'abc' }, url: 'u', number: 1 }).landed).toBe(true)
+    expect(evaluateMerged({ state: 'OPEN', mergeCommit: null, url: 'u', number: 1 }).landed).toBe(false)
+    expect(evaluateMerged({ state: 'MERGED', mergeCommit: null, url: 'u', number: 1 }).landed).toBe(false)
   })
 })

@@ -1,25 +1,24 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { ElementTable, EngineInterface, Register } from 'claude-code'
 
 import { createClient } from '../lib/linear.ts'
-import type { Issue, IssueSource, SessionEntry } from '../types'
 import {
   checkoutLabel,
   conflicts,
   decideSource,
   driftSite,
+  findRoot,
   idFromText,
   isCheckout,
-  ISSUE_QUERY,
   liveOthers,
-  parseTeamKeys,
   pickSource,
-  readEnvValue,
+  resolveApiKey,
   scopeSites,
   stateColor,
-  TEAMS_QUERY,
-  toIssue,
+  toPaneIssue,
 } from '../lib/logic.ts'
+import { issueDetail, myTeamKeys, normalizeId, resolveTeamKeys } from '../lib/workflow.ts'
+import type { Issue, IssueSource, SessionEntry } from '../types'
 
 const PANE = 'linear-workflow'
 const HEARTBEAT_MS = 60 * 1000
@@ -64,9 +63,7 @@ async function git($: EngineInterface, cwd: string, args: string[]): Promise<str
 }
 
 async function loadRepo($: EngineInterface): Promise<Repo | null> {
-  const top =
-    (await git($, '.', ['rev-parse', '--show-superproject-working-tree'])) ||
-    (await git($, '.', ['rev-parse', '--show-toplevel']))
+  const top = await findRoot(args => git($, '.', args))
   if (!top) return null
 
   let sites: Repo['sites'] = []
@@ -88,26 +85,17 @@ async function loadKey($: EngineInterface): Promise<string | undefined> {
   if (config.linearApiKey) {
     // Hand the secret option to the workflow CLI, which runs in Bash.
     await $.env.set('LINEAR_API_KEY', config.linearApiKey)
-    return config.linearApiKey
   }
-  const fromEnv = await $.env.get('LINEAR_API_KEY')
-  if (fromEnv) return fromEnv
-  if (!repo) return undefined
-  try {
-    return readEnvValue(await $.fs.read(`${repo.root}/.env`), 'LINEAR_API_KEY')
-  } catch {
-    return undefined
-  }
+  const envFileText = repo ? await $.fs.read(`${repo.root}/.env`).catch(() => undefined) : undefined
+  return resolveApiKey({ option: config.linearApiKey, env: await $.env.get('LINEAR_API_KEY'), envFileText })
 }
 
 async function resolveSource($: EngineInterface): Promise<IssueSource | null> {
   if (!repo) return null
   const rootBranch = await git($, repo.root, ['rev-parse', '--abbrev-ref', 'HEAD'])
-  const siteBranches: Record<string, string> = {}
-  for (const site of repo.sites) {
-    siteBranches[site.key] = await git($, site.path, ['rev-parse', '--abbrev-ref', 'HEAD'])
-  }
-  const fromBranch = pickSource(rootBranch, siteBranches, null, teamKeys)
+  const branches = await Promise.all(repo.sites.map(site => git($, site.path, ['rev-parse', '--abbrev-ref', 'HEAD'])))
+  const siteBranches = Object.fromEntries(repo.sites.map((site, n) => [site.key, branches[n] ?? '']))
+  const fromBranch = pickSource(rootBranch, siteBranches, teamKeys)
   const pinned = await read($, pinnedAtom)
   const pinnedBy = await read($, pinnedByAtom)
   const previous = await read($, sourceAtom)
@@ -131,29 +119,20 @@ async function resolveSource($: EngineInterface): Promise<IssueSource | null> {
   const by = d.pinnedBy as 'command' | 'manual' | 'held' | null
   if (d.pinned !== pinned || d.pinnedBy !== pinnedBy) await setPin($, d.pinned, by)
   if (d.claimedBranch !== claimedBranch) await update($, claimedBranchAtom, () => d.claimedBranch)
-  if (d.use === 'pin' && d.pinned) return pinnedSource(rootBranch, siteBranches, d.pinned, by)
+  if (d.use === 'pin' && d.pinned) return pinnedSource(d.pinned, by)
   return d.use === 'branch' ? fromBranch : null
 }
 
-function pinnedSource(
-  rootBranch: string,
-  siteBranches: Record<string, string>,
-  id: string,
-  by: 'command' | 'manual' | 'held' | null,
-): IssueSource | null {
-  const source = pickSource(rootBranch, siteBranches, id, teamKeys)
-  if (!source) return source
-  if (by === 'held') return { ...source, detail: 'held: another session moved the branch' }
-  if (by === 'command') return { ...source, detail: `pinned by /${config.pinCommand}` }
-  return source
+function pinnedSource(id: string, by: 'command' | 'manual' | 'held' | null): IssueSource {
+  const detail =
+    by === 'held' ? 'held: another session moved the branch' : by === 'command' ? `pinned by /${config.pinCommand}` : 'pinned with /linear'
+  return { id, from: 'pinned', detail }
 }
 
 async function fetchIssue($: EngineInterface, id: string): Promise<Issue | string> {
   if (!apiKey) return 'Linear API key not found (plugin option, LINEAR_API_KEY env, or <repo>/.env)'
   try {
-    const data = await linear($).query<{ issue?: unknown }>(ISSUE_QUERY, { id })
-    if (!data.issue) return `${id}: not found`
-    return toIssue(data.issue as Parameters<typeof toIssue>[0])
+    return toPaneIssue(await issueDetail(linear($), id))
   } catch (err) {
     return `${id}: ${err instanceof Error ? err.message : 'fetch failed'}`
   }
@@ -257,24 +236,46 @@ function linear($: EngineInterface) {
 }
 
 async function loadTeamKeys($: EngineInterface): Promise<string[]> {
-  const configured = parseTeamKeys(config.teamKeys)
-  if (configured.length) return configured
-  if (repo) {
-    try {
-      const project = JSON.parse(await $.fs.read(`${repo.root}/.claude/linear.json`)) as { teamKey?: string }
-      const fromProject = parseTeamKeys(project.teamKey)
-      if (fromProject.length) return fromProject
-    } catch {
-      // no project settings
-    }
+  if (config.teamKeys) {
+    // The CLI resolves team keys the same way; hand it the option too.
+    await $.env.set('LINEAR_WORKFLOW_TEAM_KEYS', config.teamKeys)
   }
-  if (!apiKey) return []
-  try {
-    const data = await linear($).query<{ teams: { nodes: { key: string }[] } }>(TEAMS_QUERY)
-    return parseTeamKeys(data.teams.nodes.map(t => t.key).join(','))
-  } catch {
-    return []
-  }
+  return resolveTeamKeys({
+    option: config.teamKeys,
+    configText: repo ? await $.fs.read(`${repo.root}/.claude/linear.json`).catch(() => undefined) : undefined,
+    fetchMine: apiKey ? () => myTeamKeys(linear($)) : undefined,
+  })
+}
+
+type Ui = Pick<ElementTable, 'Box' | 'Text'>
+
+/** `── Title n ─────` across the width; the title never shrinks, the rule does. */
+function divider({ Box, Text }: Ui, title: string, width: number, opts: { count?: number; dim?: boolean; marginTop?: number } = {}) {
+  return (
+    <Box marginTop={opts.marginTop ?? 0}>
+      <Box flexShrink={0}>
+        <Text dimColor>── </Text>
+        <Text bold dimColor={opts.dim}>{title}</Text>
+        {opts.count !== undefined && <Text dimColor> {opts.count}</Text>}
+        <Text> </Text>
+      </Box>
+      <Box flexShrink={1} overflow="hidden">
+        <Text dimColor wrap="truncate">{'─'.repeat(Math.max(0, width))}</Text>
+      </Box>
+    </Box>
+  )
+}
+
+/** `◆ ABC-123  In Progress · High` */
+function header({ Box, Text }: Ui, issue: Issue) {
+  return (
+    <Box>
+      <Text bold color={stateColor(issue.stateType)}>◆ </Text>
+      <Text bold>{issue.identifier}  </Text>
+      <Text color={stateColor(issue.stateType)}>{issue.state}</Text>
+      <Text dimColor> · {issue.priority}</Text>
+    </Box>
+  )
 }
 
 export const register: Register = (on, options) => {
@@ -300,6 +301,8 @@ export const register: Register = (on, options) => {
     teamKeys = await loadTeamKeys($)
     const home = await $.env.get('HOME')
     registryDir = home ? `${home}/.claude/linear-workflow/sessions` : null
+    // Learn which issues other sessions claim before choosing this session's own.
+    await heartbeat($)
     await refresh($, true)
     if (await read($, sourceAtom)) void $.ui.open({ id: PANE, title: 'Linear' })
     return started
@@ -333,9 +336,10 @@ export const register: Register = (on, options) => {
 
   on('command.run', async ($, e, next) => {
     const name = String(e.command).split(':').pop()
-    const bare = /^\s*#?(\d+)\s*$/.exec(e.args)?.[1]
-    const fromArgs = idFromText(e.args) ?? (bare && teamKeys.length === 1 ? `${teamKeys[0]}-${bare}` : undefined)
-    const id = config.pinCommand && name === config.pinCommand ? fromArgs : undefined
+    const id =
+      config.pinCommand && name === config.pinCommand
+        ? (normalizeId(e.args, teamKeys.length === 1 ? teamKeys[0] : undefined) ?? idFromText(e.args))
+        : undefined
     if (id) {
       await setPin($, id, 'command')
       await refresh($, true)
@@ -358,7 +362,8 @@ export const register: Register = (on, options) => {
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
-    if (isCheckout(String((e as unknown as { command?: string }).command ?? ''))) ownCheckout = true
+    const succeeded = !('deny' in result && result.deny) && !result.isError
+    if (succeeded && isCheckout(String((e as unknown as { command?: string }).command ?? ''))) ownCheckout = true
     return result
   })
 
@@ -395,18 +400,8 @@ export const register: Register = (on, options) => {
       repo ? conflicts({ checkout: repo.root, issue: source?.id ?? null }, others).map(c => c.sessionId) : [],
     )
 
-    const rule = (
-      <Box>
-        <Box flexShrink={0}>
-          <Text dimColor>── </Text>
-          <Text bold dimColor>Linear</Text>
-          <Text> </Text>
-        </Box>
-        <Box flexShrink={1} overflow="hidden">
-          <Text dimColor wrap="truncate">{'─'.repeat(Math.max(0, width))}</Text>
-        </Box>
-      </Box>
-    )
+    const ui = { Box, Text }
+    const rule = divider(ui, 'Linear', width, { dim: true })
     const sessionsRow = others.length > 0 && (
       <Box>
         <Box flexShrink={0}>
@@ -466,12 +461,7 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="column" width={width} marginTop={1}>
         {rule}
-        <Box>
-          <Text bold color={stateColor(issue.stateType)}>◆ </Text>
-          <Text bold>{issue.identifier}  </Text>
-          <Text color={stateColor(issue.stateType)}>{issue.state}</Text>
-          <Text dimColor> · {issue.priority}</Text>
-        </Box>
+        {header(ui, issue)}
         <Text wrap="truncate">  {issue.title}</Text>
         <Box justifyContent="space-between">
           <Box flexShrink={1}>
@@ -493,19 +483,8 @@ export const register: Register = (on, options) => {
     const width = e.props.bodyColumns
     const clashes = repo ? conflicts({ checkout: repo.root, issue: source?.id ?? null }, others) : []
 
-    const section = (title: string, count?: number) => (
-      <Box marginTop={1}>
-        <Box flexShrink={0}>
-          <Text dimColor>── </Text>
-          <Text bold>{title}</Text>
-          {count !== undefined && <Text dimColor> {count}</Text>}
-          <Text> </Text>
-        </Box>
-        <Box flexShrink={1} overflow="hidden">
-          <Text dimColor wrap="truncate">{'─'.repeat(Math.max(0, width))}</Text>
-        </Box>
-      </Box>
-    )
+    const ui = { Box, Text }
+    const section = (title: string, count?: number) => divider(ui, title, width, { count, marginTop: 1 })
     const field = (label: string, value: string | null | undefined) =>
       value ? (
         <Box key={label}>
@@ -548,12 +527,7 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column" width={width}>
-        <Box>
-          <Text bold color={stateColor(issue.stateType)}>◆ </Text>
-          <Text bold>{issue.identifier}  </Text>
-          <Text color={stateColor(issue.stateType)}>{issue.state}</Text>
-          <Text dimColor> · {issue.priority}</Text>
-        </Box>
+        {header(ui, issue)}
         <Text bold>{issue.title}</Text>
         <Box marginTop={1}>
           <Button key="copy" label="Copy link" onPress={async () => {

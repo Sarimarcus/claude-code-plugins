@@ -11,9 +11,7 @@ Takes you from a cold start to implementation in one command. There is no "ready
 The deterministic steps run through the bundled CLI. It prints JSON on stdout and one summary line
 on stderr. Exit 0 means ok, 1 means an error (the message is in `error`), and 2 means it refused.
 
-```bash
-LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
-```
+Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
 **Fallback:** if a CLI call exits 1 because the API key is missing or Linear is unreachable, do the same
 step through the `linear-workflow:linear-manager` agent and say that you did.
@@ -21,7 +19,7 @@ step through the `linear-workflow:linear-manager` agent and say that you did.
 ## 1. Fetch
 
 ```bash
-node "$LW" issue "$ARGUMENTS"
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" issue "$ARGUMENTS"
 ```
 
 `$ARGUMENTS` can be `ABC-123`, `#123` or `123`; a bare number needs `teamKey` in `.claude/linear.json`.
@@ -56,7 +54,7 @@ If `blockedBy` is not empty, list the blockers and ask `Continue anyway? [y/N]`.
 ## 3. Move to In Progress
 
 ```bash
-node "$LW" transition <ID> "In Progress" --no-rollup
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition <ID> "In Progress"
 ```
 
 Idempotent: if the issue is already in that state, nothing is written.
@@ -66,10 +64,11 @@ Idempotent: if the issue is already in that state, nothing is written.
 If the working tree has uncommitted changes that are not part of this issue, stop and ask before
 switching branches. Never stash or discard them.
 
-Use `branchName` from step 1 (fall back to `<abc-123>-<slugified-title>`). If the branch exists,
-switch to it. Otherwise create it **from the up-to-date base**, never from what is checked out now:
-starting from another issue's branch would drag its commits into this PR. `<base>` is `baseBranch`
-from `node "$LW" config`, else the repo's default branch.
+Use `branchName` from step 1 (Linear always sets it). If the branch exists, switch to it. Otherwise
+create it **from the up-to-date base**, never from what is checked out now: starting from another
+issue's branch would drag its commits into this PR. `<base>` is `baseBranch` from
+`node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" config`, which already falls back to the repo's
+default branch.
 
 ```bash
 git fetch origin "<base>" && \

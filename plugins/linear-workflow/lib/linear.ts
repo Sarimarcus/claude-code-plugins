@@ -19,7 +19,7 @@ export type IssueSummary = {
   branchName: string
   milestone: { name: string; targetDate: string | null } | null
   labels: string[]
-  parent: { identifier: string; title: string; cycleId: string | null } | null
+  parent: { identifier: string; title: string; cycleId: string | null; labels: string[] } | null
   cycleId: string | null
   blockedBy: { identifier: string; state: string }[]
   childCount: number
@@ -53,7 +53,7 @@ export type Client = ReturnType<typeof createClient>
 
 export const SUMMARY_FIELDS = `id identifier title url priority priorityLabel createdAt branchName
 state{name type} projectMilestone{name targetDate} labels{nodes{name}} cycle{id}
-parent{identifier title cycle{id}} children{nodes{id}}
+parent{identifier title cycle{id} labels{nodes{name}}} children{nodes{id}}
 inverseRelations{nodes{type issue{identifier state{name type}}}}`
 
 type RawSummary = {
@@ -69,7 +69,7 @@ type RawSummary = {
   projectMilestone: { name: string; targetDate: string | null } | null
   labels: { nodes: { name: string }[] }
   cycle: { id: string } | null
-  parent: { identifier: string; title: string; cycle: { id: string } | null } | null
+  parent: { identifier: string; title: string; cycle: { id: string } | null; labels: { nodes: { name: string }[] } } | null
   children: { nodes: { id: string }[] }
   inverseRelations: { nodes: { type: string; issue: { identifier: string; state: { name: string; type: StateType } } }[] }
 }
@@ -91,7 +91,9 @@ export function toSummary(raw: RawSummary): IssueSummary {
     branchName: raw.branchName,
     milestone: raw.projectMilestone,
     labels: raw.labels.nodes.map(l => l.name),
-    parent: raw.parent ? { identifier: raw.parent.identifier, title: raw.parent.title, cycleId: raw.parent.cycle?.id ?? null } : null,
+    parent: raw.parent
+      ? { identifier: raw.parent.identifier, title: raw.parent.title, cycleId: raw.parent.cycle?.id ?? null, labels: raw.parent.labels.nodes.map(l => l.name) }
+      : null,
     cycleId: raw.cycle?.id ?? null,
     blockedBy: raw.inverseRelations.nodes
       .filter(r => r.type === 'blocks' && isOpenType(r.issue.state.type))

@@ -1,13 +1,7 @@
 import type { Issue, IssueSource, SessionEntry } from '../types'
+import type { IssueDetail } from './workflow.ts'
 
 const ANY_ID = /\b([A-Z][A-Z0-9]{1,9})-(\d+)\b/
-
-export function parseTeamKeys(value: unknown): string[] {
-  return String(value ?? '')
-    .split(/[\s,]+/)
-    .map(k => k.trim().toUpperCase())
-    .filter(k => /^[A-Z][A-Z0-9]{0,9}$/.test(k))
-}
 
 export function idFromBranch(branch: string, teamKeys: string[]): string | undefined {
   if (teamKeys.length === 0) return undefined
@@ -29,14 +23,8 @@ export function readEnvValue(text: string, key: string): string | undefined {
   return undefined
 }
 
-export function pickSource(
-  rootBranch: string,
-  siteBranches: Record<string, string>,
-  pinned: string | null,
-  teamKeys: string[],
-): IssueSource | null {
-  if (pinned) return { id: pinned, from: 'pinned', detail: 'pinned with /linear' }
-
+/** The issue named by the root branch, else by the most sub-project branches. */
+export function pickSource(rootBranch: string, siteBranches: Record<string, string>, teamKeys: string[]): IssueSource | null {
   const rootId = idFromBranch(rootBranch, teamKeys)
   if (rootId) return { id: rootId, from: 'root', detail: rootBranch }
 
@@ -71,58 +59,35 @@ export function driftSite(
   return site && !scope.includes(site.key) ? site.key : undefined
 }
 
-export const ISSUE_QUERY = `query($id:String!){issue(id:$id){identifier title url priorityLabel description
-state{name type} labels{nodes{name}} parent{identifier title labels{nodes{name}}}
-children{nodes{identifier title state{name type}}} comments(last:3){nodes{body createdAt user{name}}}
-attachments{nodes{title url}} assignee{name} cycle{number} projectMilestone{name}}}`
-
-type Node<T> = { nodes: T[] }
-type RawIssue = {
-  identifier: string
-  title: string
-  url: string
-  priorityLabel: string
-  description: string | null
-  state: { name: string; type: string }
-  labels: Node<{ name: string }>
-  parent: { identifier: string; title: string; labels: Node<{ name: string }> } | null
-  children: Node<{ identifier: string; title: string; state: { name: string; type: string } }>
-  comments: Node<{ body: string; createdAt: string; user: { name: string } | null }>
-  attachments: Node<{ title: string; url: string }>
-  assignee: { name: string } | null
-  cycle: { number: number } | null
-  projectMilestone: { name: string } | null
+/** The pane's view of an issue, from the shared fetch: latest comments, bodies capped. */
+export function toPaneIssue(d: IssueDetail): Issue {
+  return {
+    identifier: d.identifier,
+    title: d.title,
+    url: d.url,
+    state: d.state.name,
+    stateType: d.state.type,
+    priority: d.priorityLabel,
+    labels: d.labels,
+    parent: d.parent ? { identifier: d.parent.identifier, title: d.parent.title, labels: d.parent.labels } : null,
+    assignee: d.assignee,
+    cycle: d.cycle,
+    milestone: d.milestone?.name ?? null,
+    description: d.description.slice(0, 6000),
+    children: d.children.map(c => ({ identifier: c.identifier, title: c.title, state: c.state.name, stateType: c.state.type })),
+    comments: d.comments.slice(-3).map(c => ({ author: c.author, createdAt: c.createdAt.slice(0, 10), body: c.body.slice(0, 1200) })),
+    links: d.links,
+  }
 }
 
-export function toIssue(raw: RawIssue): Issue {
-  return {
-    identifier: raw.identifier,
-    title: raw.title,
-    url: raw.url,
-    state: raw.state.name,
-    stateType: raw.state.type,
-    priority: raw.priorityLabel,
-    labels: raw.labels.nodes.map(l => l.name),
-    parent: raw.parent
-      ? { identifier: raw.parent.identifier, title: raw.parent.title, labels: raw.parent.labels.nodes.map(l => l.name) }
-      : null,
-    assignee: raw.assignee?.name ?? null,
-    cycle: raw.cycle?.number ?? null,
-    milestone: raw.projectMilestone?.name ?? null,
-    description: (raw.description ?? '').slice(0, 6000),
-    children: raw.children.nodes.map(c => ({
-      identifier: c.identifier,
-      title: c.title,
-      state: c.state.name,
-      stateType: c.state.type,
-    })),
-    comments: raw.comments.nodes.map(c => ({
-      author: c.user?.name ?? 'bot',
-      createdAt: c.createdAt.slice(0, 10),
-      body: c.body.slice(0, 1200),
-    })),
-    links: raw.attachments.nodes.map(a => ({ title: a.title, url: a.url })),
-  }
+/** The repo the session works in: the superproject when inside a submodule. */
+export async function findRoot(git: (args: string[]) => Promise<string>): Promise<string> {
+  return (await git(['rev-parse', '--show-superproject-working-tree'])) || (await git(['rev-parse', '--show-toplevel']))
+}
+
+/** API key: explicit option, then the environment, then `<root>/.env`. */
+export function resolveApiKey(input: { option?: string; env?: string; envFileText?: string }): string | undefined {
+  return input.option || input.env || (input.envFileText ? readEnvValue(input.envFileText, 'LINEAR_API_KEY') : undefined) || undefined
 }
 
 export function stateColor(type: string): string {
@@ -136,8 +101,6 @@ export function stateColor(type: string): string {
 }
 
 export const STALE_MS = 3 * 60 * 1000
-
-export const TEAMS_QUERY = `query{teams{nodes{key}}}`
 
 export function isCheckout(command: string): boolean {
   return command.split(/&&|\|\||;|\n/).some(part => {
@@ -200,7 +163,8 @@ export function decideSource(input: {
 }): SourceDecision {
   const { fromBranch, previous, branchMoved, own, claimedElsewhere } = input
   let { pinned, pinnedBy, claimedBranch } = input
-  if (own && fromBranch) claimedBranch = fromBranch.id
+  // Only a switch this session made claims (or, onto a branch without an issue, releases) a branch issue.
+  if (own && branchMoved) claimedBranch = fromBranch?.id ?? null
 
   if (branchMoved && !own) {
     // Another session moved the shared branch: keep the issue this session had claimed.

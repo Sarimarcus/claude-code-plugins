@@ -38,7 +38,8 @@ ABC-140  High · no due          <title>   [epic: ABC-100 <title>]
          why: next unblocked sub-issue of in-progress epic ABC-100
 ```
 
-- Show urgency relative to today: `ends in Nd`, `overdue Nd`, or `no due`.
+- Show urgency from `dueInDays` (the CLI counts the days to the milestone's target date): `ends in Nd`,
+  `overdue Nd` when negative, `due today` at 0, `no due` when null. Never count days yourself.
 - Give a "why" of one short sentence per row, based on what decided its rank. Don't repeat the
   same reason word for word.
 - If `droppedEpics` isn't empty, mention it once after the table.

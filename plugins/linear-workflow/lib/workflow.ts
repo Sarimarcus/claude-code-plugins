@@ -37,6 +37,42 @@ export function normalizeId(input: string, teamKey?: string): string | undefined
   return undefined
 }
 
+/** Team keys to look for in branch names: explicit option, then linear.json's teamKey, then your teams. */
+export async function resolveTeamKeys(input: {
+  option?: string
+  configText?: string
+  fetchMine?: () => Promise<string[]>
+}): Promise<string[]> {
+  const fromOption = splitKeys(input.option)
+  if (fromOption.length) return fromOption
+  let fromConfig: string[] = []
+  try {
+    fromConfig = splitKeys(parseProjectConfig(input.configText).teamKey)
+  } catch {
+    // unreadable linear.json: fall through
+  }
+  if (fromConfig.length) return fromConfig
+  try {
+    return input.fetchMine ? splitKeys((await input.fetchMine()).join(',')) : []
+  } catch {
+    return []
+  }
+}
+
+function splitKeys(value: string | undefined): string[] {
+  return String(value ?? '')
+    .split(/[\s,]+/)
+    .map(k => k.trim().toUpperCase())
+    .filter(k => /^[A-Z][A-Z0-9]{0,9}$/.test(k))
+}
+
+/** Whole days from `today` (YYYY-MM-DD) to `date`; negative when overdue. */
+export function daysUntil(date: string | null | undefined, today: string): number | null {
+  if (!date) return null
+  const ms = Date.parse(`${date.slice(0, 10)}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)
+  return Number.isNaN(ms) ? null : Math.round(ms / 86_400_000)
+}
+
 // ---------- ranking (pure) ----------
 
 function priorityRank(p: number): number {
@@ -83,7 +119,7 @@ export async function activeCycle(client: Client, teamKey?: string): Promise<Cyc
   return team?.activeCycle ? { ...team.activeCycle, teamKey: team.key } : null
 }
 
-export type QueueEntry = IssueSummary & { epic: { identifier: string; title: string } | null }
+export type QueueEntry = IssueSummary & { epic: { identifier: string; title: string } | null; dueInDays: number | null }
 export type QueueResult = {
   cycle: Cycle | null
   examined: number
@@ -92,7 +128,7 @@ export type QueueResult = {
   droppedEpics: { identifier: string; reason: string }[]
 }
 
-export async function queue(client: Client, opts: { teamKey?: string; limit?: number }): Promise<QueueResult> {
+export async function queue(client: Client, opts: { teamKey?: string; limit?: number; today: string }): Promise<QueueResult> {
   const cycle = await activeCycle(client, opts.teamKey)
   if (!cycle) return { cycle: null, examined: 0, candidates: [], droppedBlocked: [], droppedEpics: [] }
   const data = await client.query<{ issues: { nodes: RawSummary[] } }>(
@@ -103,16 +139,20 @@ export async function queue(client: Client, opts: { teamKey?: string; limit?: nu
   const droppedBlocked = issues.filter(i => i.blockedBy.length > 0).map(i => i.identifier)
   const droppedEpics: QueueResult['droppedEpics'] = []
   const candidates: QueueEntry[] = []
+  const due = (i: IssueSummary) => daysUntil(i.milestone?.targetDate, opts.today)
 
-  for (const issue of issues.filter(i => i.blockedBy.length === 0)) {
-    if (issue.state.type === 'started' && issue.childCount > 0) {
-      const next = await nextChild(client, issue.id)
-      if (next) candidates.push({ ...next, epic: { identifier: issue.identifier, title: issue.title } })
-      else droppedEpics.push({ identifier: issue.identifier, reason: 'no unblocked Todo or In Progress sub-issue' })
-      continue
+  const unblocked = issues.filter(i => i.blockedBy.length === 0)
+  const isEpic = (i: IssueSummary) => i.state.type === 'started' && i.childCount > 0
+  const nexts = await Promise.all(unblocked.map(i => (isEpic(i) ? nextChild(client, i.id) : Promise.resolve(null))))
+  unblocked.forEach((issue, n) => {
+    if (!isEpic(issue)) {
+      candidates.push({ ...issue, epic: null, dueInDays: due(issue) })
+      return
     }
-    candidates.push({ ...issue, epic: null })
-  }
+    const next = nexts[n]
+    if (next) candidates.push({ ...next, epic: { identifier: issue.identifier, title: issue.title }, dueInDays: due(next) })
+    else droppedEpics.push({ identifier: issue.identifier, reason: 'no unblocked Todo or In Progress sub-issue' })
+  })
   const seen = new Set<string>()
   const unique = candidates.filter(c => (seen.has(c.identifier) ? false : (seen.add(c.identifier), true)))
   return {
@@ -168,6 +208,8 @@ export type IssueDetail = IssueSummary & {
   teamKey: string
   assignee: string | null
   cycle: number | null
+  children: { identifier: string; title: string; state: { name: string; type: StateType } }[]
+  links: { title: string; url: string }[]
   comments: { id: string; author: string; createdAt: string; body: string }[]
 }
 
@@ -177,9 +219,13 @@ export async function issueDetail(client: Client, id: string): Promise<IssueDeta
     team: { key: string }
     assignee: { name: string } | null
     cycle: { id: string; number: number } | null
+    subIssues: { nodes: { identifier: string; title: string; state: { name: string; type: StateType } }[] }
+    attachments: { nodes: { title: string; url: string }[] }
     comments: { nodes: { id: string; body: string; createdAt: string; user: { name: string } | null }[] }
   }) | null }>(
     `query($id:String!){issue(id:$id){${SUMMARY_FIELDS} description team{key} assignee{name} cycle{id number}
+      subIssues: children(first:250){nodes{identifier title state{name type}}}
+      attachments{nodes{title url}}
       comments(first:250){nodes{id body createdAt user{name}}}}}`,
     { id },
   )
@@ -191,6 +237,8 @@ export async function issueDetail(client: Client, id: string): Promise<IssueDeta
     teamKey: raw.team.key,
     assignee: raw.assignee?.name ?? null,
     cycle: raw.cycle?.number ?? null,
+    children: raw.subIssues.nodes,
+    links: raw.attachments.nodes,
     comments: raw.comments.nodes
       .map(c => ({ id: c.id, author: c.user?.name ?? 'integration', createdAt: c.createdAt, body: c.body }))
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)),
@@ -237,9 +285,19 @@ export function resolveState(states: TeamState[], target: string): TeamState | u
   return undefined
 }
 
-/** A sibling still owes work unless it is completed, canceled, or already in the target state. */
-export function siblingsUnfinished(siblings: { identifier: string; state: { id: string; type: StateType } }[], target: TeamState): string[] {
-  return siblings.filter(s => isOpenType(s.state.type) && s.state.id !== target.id).map(s => s.identifier)
+export type Role = 'done' | 'review'
+
+/** The roll-up role of a target state, or null when a move there never rolls a parent up. */
+export function rollUpRole(state: { name: string; type: StateType }): Role | null {
+  if (state.type === 'completed') return 'done'
+  return isInReview(state) ? 'review' : null
+}
+
+/** A sibling still owes work unless it is completed or canceled, or, for a review roll-up, in review. */
+export function siblingsUnfinished(siblings: { identifier: string; state: { name: string; type: StateType } }[], role: Role): string[] {
+  return siblings
+    .filter(s => isOpenType(s.state.type) && !(role === 'review' && isInReview(s.state)))
+    .map(s => s.identifier)
 }
 
 export type TransitionResult = {
@@ -248,7 +306,7 @@ export type TransitionResult = {
   to: string
   changed: boolean
   commented: boolean
-  parent: { issue: string; rolledUp: boolean; unfinished: string[]; changed: boolean } | null
+  parent: { issue: string; rolledUp: boolean; unfinished: string[]; changed: boolean; note?: string } | null
 }
 
 type RawForTransition = {
@@ -256,13 +314,20 @@ type RawForTransition = {
   identifier: string
   state: { id: string; name: string; type: StateType }
   team: { states: { nodes: TeamState[] } }
-  parent: { id: string; identifier: string; state: { id: string; name: string }; children: { nodes: { identifier: string; state: { id: string; type: StateType } }[] } } | null
+  parent: {
+    id: string
+    identifier: string
+    state: { id: string; name: string }
+    team: { states: { nodes: TeamState[] } }
+    children: { nodes: { identifier: string; state: { name: string; type: StateType } }[] }
+  } | null
 }
 
-export async function transition(client: Client, id: string, target: string, comment?: string, rollUp = true): Promise<TransitionResult> {
+export async function transition(client: Client, id: string, target: string, comment?: string): Promise<TransitionResult> {
   const data = await client.query<{ issue: RawForTransition | null }>(
     `query($id:String!){issue(id:$id){id identifier state{id name type} team{states{nodes{id name type position}}}
-      parent{id identifier state{id name} children(first:250){nodes{identifier state{id type}}}}}}`,
+      parent{id identifier state{id name} team{states{nodes{id name type position}}}
+        children(first:250){nodes{identifier state{name type}}}}}}`,
     { id },
   )
   const issue = data.issue
@@ -275,15 +340,24 @@ export async function transition(client: Client, id: string, target: string, com
   if (comment) await addComment(client, issue.id, comment)
 
   let parent: TransitionResult['parent'] = null
-  if (rollUp && issue.parent && (state.type === 'completed' || /review/i.test(state.name))) {
-    const siblings = issue.parent.children.nodes.map(s => (s.identifier === issue.identifier ? { ...s, state: { id: state.id, type: state.type } } : s))
-    const unfinished = siblingsUnfinished(siblings, state)
-    const parentChanged = unfinished.length === 0 && issue.parent.state.id !== state.id
-    if (parentChanged) {
-      await setState(client, issue.parent.id, state.id)
+  const role = rollUpRole(state)
+  if (role && issue.parent) {
+    const siblings = issue.parent.children.nodes.map(s => (s.identifier === issue.identifier ? { ...s, state: { name: state.name, type: state.type } } : s))
+    const unfinished = siblingsUnfinished(siblings, role)
+    // The parent may live in another team: move it to that team's state for the same role.
+    const parentState = resolveState(issue.parent.team.states.nodes, role === 'done' ? 'Done' : 'In Review')
+    const parentChanged = unfinished.length === 0 && parentState !== undefined && issue.parent.state.id !== parentState.id
+    if (parentChanged && parentState) {
+      await setState(client, issue.parent.id, parentState.id)
       await addComment(client, issue.parent.id, 'All sub-issues complete.')
     }
-    parent = { issue: issue.parent.identifier, rolledUp: unfinished.length === 0, unfinished, changed: parentChanged }
+    parent = {
+      issue: issue.parent.identifier,
+      rolledUp: unfinished.length === 0 && parentState !== undefined,
+      unfinished,
+      changed: parentChanged,
+      ...(parentState ? {} : { note: `parent's team has no state for "${role}"` }),
+    }
   }
   return { issue: issue.identifier, from: issue.state.name, to: state.name, changed, commented: Boolean(comment), parent }
 }
@@ -307,8 +381,7 @@ async function addComment(client: Client, issueId: string, body: string): Promis
 export type SetCycleResult = { cycle: number; set: string[]; already: string[]; failed: { issue: string; error: string }[] }
 
 export async function setCycle(client: Client, teamKey: string | undefined, number: number, ids: string[]): Promise<SetCycleResult> {
-  const cycle = await activeCycle(client, teamKey)
-  const team = teamKey ?? cycle?.teamKey
+  const team = teamKey ?? (await activeCycle(client))?.teamKey
   if (!team) throw new LinearError('No team: pass --team or set teamKey in .claude/linear.json')
   const found = await client.query<{ cycles: { nodes: { id: string; number: number }[] } }>(
     `query($team:String!,$n:Float!){cycles(filter:{team:{key:{eq:$team}},number:{eq:$n}}){nodes{id number}}}`,
@@ -317,26 +390,26 @@ export async function setCycle(client: Client, teamKey: string | undefined, numb
   const target = found.cycles.nodes[0]
   if (!target) throw new LinearError(`Team ${team} has no cycle #${number}`)
   const out: SetCycleResult = { cycle: number, set: [], already: [], failed: [] }
-  for (const id of ids) {
-    try {
+  const results = await Promise.allSettled(
+    ids.map(async id => {
       const cur = await client.query<{ issue: { id: string; cycle: { id: string } | null } | null }>(
         `query($id:String!){issue(id:$id){id cycle{id}}}`,
         { id },
       )
       if (!cur.issue) throw new LinearError('not found')
-      if (cur.issue.cycle?.id === target.id) {
-        out.already.push(id)
-        continue
-      }
+      if (cur.issue.cycle?.id === target.id) return 'already' as const
       const r = await client.query<{ issueUpdate: { success: boolean } }>(
         `mutation($id:String!,$c:String!){issueUpdate(id:$id,input:{cycleId:$c}){success}}`,
         { id: cur.issue.id, c: target.id },
       )
       if (!r.issueUpdate.success) throw new LinearError('issueUpdate failed')
-      out.set.push(id)
-    } catch (err) {
-      out.failed.push({ issue: id, error: err instanceof Error ? err.message : String(err) })
-    }
-  }
+      return 'set' as const
+    }),
+  )
+  results.forEach((r, n) => {
+    const id = ids[n] as string
+    if (r.status === 'fulfilled') out[r.value].push(id)
+    else out.failed.push({ issue: id, error: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+  })
   return out
 }

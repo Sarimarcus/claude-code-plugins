@@ -12,9 +12,7 @@ merged or deployed. That is `issue-ship`.
 
 Running this command authorizes pushing **this issue's feature branch**. It never pushes the base branch.
 
-```bash
-LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
-```
+Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
 If a CLI call exits 1 because the API key is missing or Linear is unreachable, do that step through
 the `linear-workflow:linear-manager` agent instead and say so.
@@ -24,20 +22,21 @@ the `linear-workflow:linear-manager` agent instead and say so.
 If this session started an issue with `issue-start` and no argument was given, use that id. Otherwise:
 
 ```bash
-node "$LW" resolve $ARGUMENTS
-node "$LW" config
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" resolve $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" config
 ```
 
 `resolve` takes the argument, then the issue id in the branch name, then your only started issue in
 Linear. Exit 2 → it found none or several: stop and list `candidates`. If the id came from the
 branch or from Linear, print `Resolved ABC-123 (from <from>)` before anything else.
 
-`config` gives `baseBranch`, `checks` and the current `branch`.
+`config` gives `branch`, the resolved `baseBranch`, `onBaseBranch`, `existingPr` (the open PR for
+this branch, or null) and `checks`.
 
 ## 2. Pre-flight
 
-- Current branch is the base branch (or `main`/`master`) → stop: there is no branch to review. Run
-  `issue-start` first or switch to the issue's branch.
+- `onBaseBranch` is true → stop: there is no branch to review. Run `issue-start` first or switch to
+  the issue's branch.
 - Show `git status --short`. If files that clearly don't belong to this issue are modified, ask
   which ones to include. Never commit them silently.
 
@@ -57,7 +56,7 @@ which ones you ran. Stop on the first failure and show its output. Don't commit.
 
 ## 5. Open the PR
 
-If a PR already exists for the branch (`gh pr view --json url`), reuse it. Otherwise:
+If `config` reported an `existingPr`, reuse it. Otherwise:
 
 ```bash
 gh pr create --base "<baseBranch>" --title "<title> (ABC-123)" --body "$(cat <<'BODY'
@@ -81,7 +80,7 @@ The `Closes ABC-123` line is what links the PR to the issue, so it is required.
 Write the completion comment to a temp file, then:
 
 ```bash
-node "$LW" transition ABC-123 "In Review" --comment-file <file>
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" transition ABC-123 "In Review" --comment-file <file>
 ```
 
 The comment, four bullets:

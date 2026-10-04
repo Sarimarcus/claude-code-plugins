@@ -8,14 +8,12 @@ disable-model-invocation: true
 
 Changes cycle membership only. It never touches priority, status, milestone or assignee.
 
-```bash
-LW="${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts"
-```
+Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 
 ## 1. Fetch
 
 ```bash
-node "$LW" plan-cycle --limit 15
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" plan-cycle --limit 15
 ```
 
 The CLI selects your unscheduled, unblocked Backlog and Todo issues in the cycle's team (and in
@@ -47,7 +45,7 @@ No scoring and no capacity estimate: how much goes into the cycle is the user's 
 ## 4. Write
 
 ```bash
-node "$LW" set-cycle <number> <ids…>
+node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.ts" set-cycle <number> <ids…>
 ```
 
 The JSON lists `set`, `already` and `failed`. Exit 1 means at least one failed.

@@ -12,7 +12,7 @@ The plugin has four parts:
 - **Skills (slash commands)** take an issue from the cycle to a merged PR:
   `issue-next` → `issue-start` → *(work)* → `issue-review` → `issue-ship`, plus `issue-plan-cycle`
   to fill the cycle.
-- **A CLI** (`bin/linear-workflow.ts`) runs every step that needs no judgment: fetching and ranking
+- **A CLI** (`bin/linear-workflow.ts`) runs the Linear and GitHub steps that need no judgment: fetching and ranking
   issues, status changes, cycle changes, PR checks. It's faster than an LLM and gives the same answer
   every time. Claude keeps the parts that need judgment: reading the issue, writing the code, the
   commit message, PR summary and comments.
@@ -134,14 +134,15 @@ examined. Exit codes: `0` ok, `1` error or bad input, `2` refused (needs a human
 
 | Command | What it does |
 | --- | --- |
-| `config` | The resolved settings: repo root, branch, team key, whether a key was found, `.claude/linear.json` |
+| `config` | Repo root, current branch, resolved base branch (`baseBranch`, else origin's default) and whether you're on it, this branch's open PR, team keys, whether a key was found, `.claude/linear.json` |
 | `resolve [ABC-123\|123]` | Which issue to act on: the argument, then the branch name, then your only started issue. Exit 2 with `candidates` when it can't tell |
-| `issue <ABC-123>` | The issue with its description, open blockers, branch name and every comment, verbatim |
-| `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked |
+| `issue <ABC-123>` | The issue with its description, open blockers, sub-issues, links, branch name and every comment, verbatim |
+| `queue [--limit N]` | The active cycle's Todo and In Progress issues (not In Review, not blocked), epics replaced by their next sub-issue, ranked, each with `dueInDays` to its milestone |
 | `plan-cycle [--limit N]` | Unscheduled, unblocked backlog issues for the active cycle, ranked |
-| `transition <ABC-123> <state> [--comment-file F] [--no-rollup]` | Idempotent status change, comment, parent roll-up |
+| `transition <ABC-123> <state> [--comment TEXT \| --comment-file F]` | Idempotent status change, comment, parent roll-up (into the parent's own team states) |
 | `set-cycle <n> <ABC-123>…` | Put issues in a cycle and change nothing else |
-| `pr-check <ABC-123>` | Whether the issue's PR can merge: `ready`, `wait` (checks running) or `stop`, with reasons |
+| `pr-check <ABC-123> [--pr N]` | Whether the issue's PR can merge: `ready`, `wait` (checks running) or `stop`, with reasons. Only PRs whose branch or title names the issue, or whose body closes it, count; `--pr` picks one of several |
+| `pr-merged <ABC-123> --pr N` | Whether that PR really landed: exit 0 only when GitHub says merged and names the merge commit |
 
 `--team KEY` overrides `teamKey` from `.claude/linear.json`.
 
@@ -179,7 +180,7 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 | `/linear` | What it does |
 | --- | --- |
 | `/linear` | Open the details pane |
-| `/linear ENG-123` | Pin an issue to this session, whatever the branch |
+| `/linear ENG-123` | Pin an issue to this session. The pin lasts until this session itself switches to another issue's branch |
 | `/linear clear` | Drop the pin and follow the branch again |
 | `/linear refresh` | Re-fetch from Linear now |
 | `/linear hide` / `show` | Hide or show the band |
@@ -201,7 +202,7 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `linearApiKey` | — | Linear API key, stored as a secret (secret options are not shown in `/config`). If unset: `LINEAR_API_KEY` in the environment, then in `<repo>/.env` |
-| `teamKeys` | *(auto)* | Team keys to find in branch names. If empty: `teamKey` from `.claude/linear.json`, else your workspace's keys |
+| `teamKeys` | *(auto)* | Team keys to find in branch names. If empty: `teamKey` from `.claude/linear.json`, else the keys of the teams you belong to. The mod passes this to the CLI too |
 | `pinCommand` | `issue-start` | Skill whose first argument pins an issue to the session. Empty disables it |
 | `pollMinutes` | `5` | How often the mod refreshes the issue |
 | `showOtherSessions` | `true` | Share this session's issue with your other sessions and list theirs |

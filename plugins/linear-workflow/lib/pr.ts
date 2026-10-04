@@ -2,6 +2,7 @@ export type PrInfo = {
   number: number
   url: string
   title: string
+  body?: string
   headRefName: string
   headRefOid: string
   baseRefName: string
@@ -31,6 +32,14 @@ export function summarizeChecks(rollup: PrInfo['statusCheckRollup']): ChecksSumm
   return { total: rollup.length, failed, pending }
 }
 
+/** A PR belongs to the issue when its branch or title names it, or its body closes it. */
+export function belongsTo(issueId: string, pr: Pick<PrInfo, 'title' | 'headRefName' | 'body'>): boolean {
+  const id = issueId.replace(/[-]/g, '[-_]')
+  const named = new RegExp(`(^|[^A-Za-z0-9])${id}([^0-9]|$)`, 'i')
+  const closes = new RegExp(`\\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\\s+${id}\\b`, 'i')
+  return named.test(pr.headRefName) || named.test(pr.title) || closes.test(pr.body ?? '')
+}
+
 export type PrVerdict = {
   verdict: 'ready' | 'wait' | 'stop'
   reasons: string[]
@@ -43,13 +52,18 @@ export type PrVerdict = {
  * Decide whether the issue's PR can be merged. `stop` needs a human; `wait` means only
  * checks are still running.
  */
-export function evaluatePr(issueId: string, prs: PrInfo[], local: LocalState | null): PrVerdict {
-  const candidates = prs.map(p => ({ number: p.number, url: p.url, headRefName: p.headRefName }))
+export function evaluatePr(issueId: string, found: PrInfo[], local: LocalState | null, prNumber?: number): PrVerdict {
+  const prs = prNumber !== undefined ? found.filter(p => p.number === prNumber) : found.filter(p => belongsTo(issueId, p))
+  const candidates = found.map(p => ({ number: p.number, url: p.url, headRefName: p.headRefName }))
+  if (prNumber !== undefined && prs.length === 0) {
+    return { verdict: 'stop', reasons: [`PR #${prNumber} is not an open PR mentioning ${issueId}.`], pr: null, checks: null, candidates }
+  }
   if (prs.length === 0) {
-    return { verdict: 'stop', reasons: [`No open PR for ${issueId}. Run issue-review first.`], pr: null, checks: null, candidates }
+    const others = found.length ? ` (${found.length} open PR(s) only mention it: see candidates)` : ''
+    return { verdict: 'stop', reasons: [`No open PR for ${issueId}${others}. Run issue-review first.`], pr: null, checks: null, candidates }
   }
   if (prs.length > 1) {
-    return { verdict: 'stop', reasons: [`${prs.length} open PRs mention ${issueId}; pick one.`], pr: null, checks: null, candidates }
+    return { verdict: 'stop', reasons: [`${prs.length} open PRs belong to ${issueId}; pick one with --pr.`], pr: null, checks: null, candidates }
   }
   const pr = prs[0] as PrInfo
   const reasons: string[] = []
@@ -65,4 +79,12 @@ export function evaluatePr(issueId: string, prs: PrInfo[], local: LocalState | n
   if (reasons.length) return { verdict: 'stop', reasons, pr, checks, candidates }
   if (checks.pending.length) return { verdict: 'wait', reasons: [`Checks still running: ${checks.pending.join(', ')}`], pr, checks, candidates }
   return { verdict: 'ready', reasons: [], pr, checks, candidates }
+}
+
+export type MergeView = { state: string; mergeCommit: { oid: string } | null; url: string; number: number }
+
+/** Landed only when GitHub says MERGED and names the merge commit. */
+export function evaluateMerged(view: MergeView): { landed: boolean; state: string; mergeCommit: string | null; url: string } {
+  const oid = view.mergeCommit?.oid ?? null
+  return { landed: view.state === 'MERGED' && Boolean(oid), state: view.state, mergeCommit: oid, url: view.url }
 }

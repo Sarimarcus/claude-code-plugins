@@ -10,7 +10,6 @@ import {
   idFromText,
   isCheckout,
   liveOthers,
-  parseTeamKeys,
   pickSource,
   readEnvValue,
   scopeSites,
@@ -36,10 +35,6 @@ describe('issue id', () => {
     expect(idFromBranch('alex/phase-2-x', KEYS)).toBe(undefined)
     expect(idFromBranch('eng-12', [])).toBe(undefined)
   })
-  test('team keys option', async () => {
-    expect(parseTeamKeys(' eng, ops  web-1 ')).toEqual(['ENG', 'OPS'])
-    expect(parseTeamKeys('')).toEqual([])
-  })
   test('from text', async () => {
     expect(idFromText(' eng-2912 ')).toBe('ENG-2912')
     expect(idFromText('refresh')).toBe(undefined)
@@ -48,18 +43,15 @@ describe('issue id', () => {
 
 describe('source', () => {
   test('root branch wins over sites', async () => {
-    expect(pickSource('alex/eng-5-x', { a: 'alex/eng-6-y' }, null, KEYS)?.id).toBe('ENG-5')
+    expect(pickSource('alex/eng-5-x', { a: 'alex/eng-6-y' }, KEYS)?.id).toBe('ENG-5')
   })
   test('majority of site branches when root is main', async () => {
-    const s = pickSource('main', { a: 'alex/eng-6-y', b: 'alex/eng-6-y', c: 'alex/eng-7-z' }, null, KEYS)
+    const s = pickSource('main', { a: 'alex/eng-6-y', b: 'alex/eng-6-y', c: 'alex/eng-7-z' }, KEYS)
     expect(s?.id).toBe('ENG-6')
     expect(s?.detail).toBe('2 site(s) on it, mixed: ENG-7')
   })
-  test('pin wins', async () => {
-    expect(pickSource('alex/eng-5-x', {}, 'ENG-9', KEYS)?.from).toBe('pinned')
-  })
   test('nothing', async () => {
-    expect(pickSource('main', { a: 'main' }, null, KEYS)).toBe(null)
+    expect(pickSource('main', { a: 'main' }, KEYS)).toBe(null)
   })
 })
 
@@ -149,6 +141,15 @@ describe('which issue a session shows', () => {
     const adopted = decideSource({ ...base, fromBranch: branch('ENG-2'), previous: branch('ENG-1'), branchMoved: true, claimedElsewhere: () => true })
     expect(adopted.use).toBe('none')
     expect(adopted.pinned).toBe(null)
+  })
+  test('switching yourself to a branch without an issue releases the claim', async () => {
+    const d = decideSource({ ...base, fromBranch: null, branchMoved: true, own: true, claimedBranch: 'ENG-1' })
+    expect(d.claimedBranch).toBe(null)
+  })
+  test('a checkout that does not move the branch (e.g. restoring a file) claims nothing', async () => {
+    const d = decideSource({ ...base, fromBranch: branch('ENG-2'), own: true, claimedElsewhere: () => true })
+    expect(d.claimedBranch).toBe(null)
+    expect(d.use).toBe('none')
   })
   test('a pin wins; held clears when you switch back to its branch', async () => {
     expect(decideSource({ ...base, fromBranch: branch('ENG-2'), pinned: 'ENG-9', pinnedBy: 'manual' }).use).toBe('pin')

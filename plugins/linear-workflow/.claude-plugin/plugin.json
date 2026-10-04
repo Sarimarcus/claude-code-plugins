@@ -31,7 +31,7 @@
     "teamKeys": {
       "type": "string",
       "title": "Team keys",
-      "description": "Comma-separated Linear team keys to look for in branch names (e.g. ENG, OPS). Left empty, your workspace's team keys are fetched from Linear.",
+      "description": "Comma-separated Linear team keys to look for in branch names (e.g. ENG, OPS). Left empty: teamKey from .claude/linear.json, else the keys of the teams you belong to.",
       "default": "",
       "required": false
     },
