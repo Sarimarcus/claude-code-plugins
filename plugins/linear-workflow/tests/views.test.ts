@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { IssueDetail } from '../lib/workflow.ts'
+import { parseAcceptanceCriteria } from '../lib/workflow.ts'
 import { prView, queueView, reviewView, startView, urgency, withoutSection } from '../lib/views.ts'
 
 const DETAIL: IssueDetail = {
@@ -17,6 +18,11 @@ describe('views', () => {
   test('withoutSection drops the section and its sub-headings, keeps the rest', async () => {
     const out = withoutSection(DETAIL.description, /^acceptance criteria$/i)
     expect(out).toBe('## Context\nWhy.\n\n## Scope\n- here')
+  })
+  test('what start hides, review sees: criteria under AC sub-headings count', async () => {
+    expect(parseAcceptanceCriteria(DETAIL.description).map(c => c.text)).toEqual(['SECRET', 'also secret'])
+    expect(parseAcceptanceCriteria('## Acceptance Criteria\nThe page loads in under 1s.\n\n## Scope\n- x')).toEqual([{ text: 'The page loads in under 1s.', checked: false }])
+    expect(withoutSection('## Acceptance Criteria\nThe page loads in under 1s.\n\n## Scope\n- x', /^acceptance criteria$/i)).toBe('## Scope\n- x')
   })
   test('start view has no acceptance criteria anywhere', async () => {
     const v = startView(DETAIL)

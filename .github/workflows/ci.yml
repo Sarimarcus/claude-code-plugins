@@ -18,8 +18,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Install Claude Code (validate and unit tests run locally, no API calls)
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install Claude Code (pinned; validate and the test kit come from it)
+        run: npm install -g @anthropic-ai/claude-code@2.1.289
       - name: Validate marketplace and plugins
         run: |
           claude plugin validate .

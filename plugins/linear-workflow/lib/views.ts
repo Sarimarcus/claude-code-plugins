@@ -2,27 +2,17 @@
 
 import type { PrVerdict } from './pr.ts'
 import type { IssueDetail, PlanCycleResult, QueueResult } from './workflow.ts'
+import { ACCEPTANCE_HEADING, findSection } from './workflow.ts'
 
-/** The description without one `## Heading` section (any level), e.g. the acceptance criteria. */
+/** The description without one `## Heading` section and its sub-headings (the same bounds the parser reads). */
 export function withoutSection(markdown: string, heading: RegExp): string {
   const lines = markdown.split('\n')
-  const out: string[] = []
-  let skipLevel = 0
-  for (const line of lines) {
-    const h = /^(#{1,6})\s+(.*?)\s*:?\s*$/.exec(line.trim())
-    if (h?.[1] && h[2] !== undefined) {
-      if (skipLevel && h[1].length <= skipLevel) skipLevel = 0
-      if (!skipLevel && heading.test(h[2])) {
-        skipLevel = h[1].length
-        continue
-      }
-    }
-    if (!skipLevel) out.push(line)
-  }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  const section = findSection(lines, heading)
+  if (!section) return markdown.trim()
+  return [...lines.slice(0, section.heading), ...lines.slice(section.end)].join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
-const ACCEPTANCE = /^acceptance criteria$/i
+const ACCEPTANCE = ACCEPTANCE_HEADING
 
 /** issue-start: context and comments to work from; the acceptance criteria are left out on purpose. */
 export function startView(d: IssueDetail) {

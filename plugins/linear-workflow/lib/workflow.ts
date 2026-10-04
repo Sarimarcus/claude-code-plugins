@@ -229,18 +229,46 @@ export async function planCycle(client: Client, opts: { teamKey?: string; projec
 
 export type Criterion = { text: string; checked: boolean }
 
-/** The list items under an "Acceptance Criteria" heading (any level), with their checkbox state. */
+const HEADING = /^(#{1,6})\s+(.*?)\s*:?\s*$/
+export const ACCEPTANCE_HEADING = /^acceptance criteria$/i
+
+/**
+ * Where a `## Title` section sits in `lines`: its heading line, and where it ends (the next heading of the
+ * same or a higher level, so its sub-headings stay inside). One rule for every reader of a section.
+ */
+export function findSection(lines: string[], title: RegExp): { heading: number; end: number } | null {
+  let heading = -1
+  let level = 0
+  for (let i = 0; i < lines.length; i++) {
+    const h = HEADING.exec((lines[i] as string).trim())
+    if (!h?.[1]) continue
+    if (heading === -1) {
+      if (title.test(h[2] ?? '')) {
+        heading = i
+        level = h[1].length
+      }
+    } else if (h[1].length <= level) return { heading, end: i }
+  }
+  return heading === -1 ? null : { heading, end: lines.length }
+}
+
+/**
+ * The criteria in the "Acceptance Criteria" section, sub-headings included, with their checkbox state.
+ * A section written as prose becomes one criterion, so a non-empty section never reads as "none".
+ */
 export function parseAcceptanceCriteria(description: string): Criterion[] {
   const lines = description.split('\n')
-  const start = lines.findIndex(l => /^#{1,6}\s*acceptance criteria\s*:?\s*$/i.test(l.trim()))
-  if (start === -1) return []
+  const section = findSection(lines, ACCEPTANCE_HEADING)
+  if (!section) return []
+  const body = lines.slice(section.heading + 1, section.end).filter(l => !HEADING.test(l.trim()))
   const out: Criterion[] = []
-  for (const line of lines.slice(start + 1)) {
-    if (/^#{1,6}\s/.test(line.trim())) break
+  for (const line of body) {
     const m = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[([ xX])\]\s+)?(.+?)\s*$/.exec(line)
     if (m?.[2]) out.push({ text: m[2], checked: (m[1] ?? ' ').toLowerCase() === 'x' })
   }
-  return out
+  if (out.length) return out
+  const prose = body.map(l => l.trim()).filter(Boolean).join(' ')
+  return prose ? [{ text: prose, checked: false }] : []
 }
 
 export type IssueDetail = IssueSummary & {

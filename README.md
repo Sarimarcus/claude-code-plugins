@@ -39,7 +39,8 @@ Each plugin is versioned on its own; tags look like `<plugin>-v<version>`.
 The **Release** workflow then checks that the tag, both manifests and the CHANGELOG agree
 (`scripts/release-check.mjs`), and creates a GitHub Release with that version's notes and the plugin
 as a `.tar.gz`. **CI** validates the marketplace and every plugin, type-checks, runs the unit tests and
-the same release check on every push and pull request.
+the same release check on pushes to `main` and on pull requests. The Release workflow runs those
+checks again on the tagged commit before publishing, and marks `-rc`-style versions as prereleases.
 
 Users only receive an update when the version changes: `claude plugin update` compares versions, so
 a push without a version bump never reaches existing installs.

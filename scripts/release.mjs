@@ -23,7 +23,7 @@ if (!existsSync(manifestPath)) fail(`No plugin "${plugin}"`)
 const changelogPath = join(dir, 'CHANGELOG.md')
 const changelog = readFileSync(changelogPath, 'utf8')
 const today = new Date().toISOString().slice(0, 10)
-const updated = changelog.replace(/^## Unreleased\s*$/im, `## ${version} — ${today}`)
+const updated = changelog.replace(/^## Unreleased[ \t]*$/im, `## ${version} — ${today}`)
 if (updated === changelog && !new RegExp(`^## ${version.replace(/[.]/g, '\\.')}\\b`, 'm').test(changelog)) {
   fail('CHANGELOG.md has neither a "## Unreleased" section nor one for this version: write the notes first')
 }

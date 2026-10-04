@@ -15,6 +15,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Claude Code (pinned)
+        run: npm install -g @anthropic-ai/claude-code@2.1.289
+      - name: Verify the tagged commit (validate, type-check, tests)
+        run: |
+          claude plugin validate .
+          for p in plugins/*/; do claude plugin validate "$p"; done
+          npx tsc -p plugins/linear-workflow/bin
+          npm test
       - name: Check tag, manifests and CHANGELOG agree; extract notes
         run: node scripts/release-check.mjs "$GITHUB_REF_NAME" --notes-out notes.md
       - name: Package the plugin
@@ -26,7 +36,8 @@ jobs:
           git archive --format=tar.gz --prefix="$plugin/" -o "$file" "HEAD:plugins/$plugin"
           echo "file=$file" >> "$GITHUB_OUTPUT"
           echo "title=$plugin $version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=--prerelease" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=" >> "$GITHUB_OUTPUT" ;; esac
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "${{ steps.pkg.outputs.file }}" --title "${{ steps.pkg.outputs.title }}" --notes-file notes.md --verify-tag
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.pkg.outputs.file }}" --title "${{ steps.pkg.outputs.title }}" --notes-file notes.md --verify-tag ${{ steps.pkg.outputs.prerelease }}
