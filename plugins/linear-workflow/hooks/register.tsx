@@ -390,7 +390,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const source = await read($, sourceAtom)
     const others = await read($, othersAtom)
-    if (e.props.hasSurvey || (!source && others.length === 0) || (await read($, hiddenAtom))) return next(e)
+    if (e.props.hasSurvey || !repo || (await read($, hiddenAtom))) return next(e)
 
     const { Box, Text, Button } = $.ui.resolve(e)
     const issue = await read($, issueAtom)
@@ -432,6 +432,7 @@ export const register: Register = (on, options) => {
       return (
         <Box flexDirection="column" width={width} marginTop={1}>
           {rule}
+          <Text dimColor>  No Linear issue found</Text>
           {sessionsRow}
         </Box>
       )

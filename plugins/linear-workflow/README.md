@@ -165,8 +165,9 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 - **Only your own issue**: a session shows an issue it took on: one you pinned (`/linear ENG-123`,
   or typing `/linear-workflow:issue-start ENG-123`), or the issue in a branch name
   (`alex/eng-2919-link-builders` → `ENG-2919`) that this session switched to itself. A branch issue
-  that another live session in the same checkout has claimed is left to that session: yours shows
-  just the `sessions` row. A lone session opened on a feature branch still picks its issue up.
+  that another live session in the same checkout has claimed is left to that session, and yours shows
+  `No Linear issue found` and the `sessions` row. A lone session opened on a feature branch still
+  picks its issue up.
 - **Other sessions** (`sessions` row): every Claude Code session on your machine that runs the plugin,
   with its issue and checkout (`main` or the worktree name).
 - **Conflict warnings**: a toast and a red ⚠ when another session in the *same checkout* is on a
