@@ -2,13 +2,13 @@
 description: Feed the active Linear cycle from the backlog — list unscheduled, unblocked candidates by priority, confirm, then set their cycle
 ---
 
-# /linear-issue-mod:issue-plan-cycle — add backlog issues to the active cycle
+# /linear-workflow:issue-plan-cycle — add backlog issues to the active cycle
 
 Changes cycle membership only. It never touches priority, status, milestone or assignee.
 
 ## 1. Fetch
 
-Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `linear-issue-mod:linear-manager`:
+Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `linear-workflow:linear-manager`:
 
 > For team <team>: return the current cycle (number, start, end, issue count). Then list issues
 > in project <project, or all projects> assigned to <assignee, default me>, in a Backlog or Todo
@@ -39,7 +39,7 @@ No scoring and no capacity estimate: how much goes into the cycle is the user's 
 
 ## 4. Write
 
-Spawn `linear-issue-mod:linear-manager`: `Set the cycle to <number> on <ids>. Change no other field.`
+Spawn `linear-workflow:linear-manager`: `Set the cycle to <number> on <ids>. Change no other field.`
 
 ## 5. Report
 

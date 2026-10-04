@@ -19,19 +19,19 @@ import {
   toIssue,
 } from './logic'
 
-const PANE = 'linear-issue-mod'
+const PANE = 'linear-workflow'
 const HEARTBEAT_MS = 60 * 1000
 const GC_MS = 24 * 60 * 60 * 1000
 
-const issueAtom = atom({ plugin: 'linear-issue-mod', key: 'issue' } as const, null)
-const sourceAtom = atom({ plugin: 'linear-issue-mod', key: 'source' } as const, null)
-const errorAtom = atom({ plugin: 'linear-issue-mod', key: 'error' } as const, null)
-const hiddenAtom = atom({ plugin: 'linear-issue-mod', key: 'isBandHidden' } as const, false)
-const pinnedAtom = atom({ plugin: 'linear-issue-mod', key: 'pinned' } as const, null)
-const pinnedByAtom = atom({ plugin: 'linear-issue-mod', key: 'pinnedBy' } as const, null)
-const warnedAtom = atom({ plugin: 'linear-issue-mod', key: 'warned' } as const, [])
-const othersAtom = atom({ plugin: 'linear-issue-mod', key: 'others' } as const, [])
-const conflictsWarnedAtom = atom({ plugin: 'linear-issue-mod', key: 'conflictsWarned' } as const, [])
+const issueAtom = atom({ plugin: 'linear-workflow', key: 'issue' } as const, null)
+const sourceAtom = atom({ plugin: 'linear-workflow', key: 'source' } as const, null)
+const errorAtom = atom({ plugin: 'linear-workflow', key: 'error' } as const, null)
+const hiddenAtom = atom({ plugin: 'linear-workflow', key: 'isBandHidden' } as const, false)
+const pinnedAtom = atom({ plugin: 'linear-workflow', key: 'pinned' } as const, null)
+const pinnedByAtom = atom({ plugin: 'linear-workflow', key: 'pinnedBy' } as const, null)
+const warnedAtom = atom({ plugin: 'linear-workflow', key: 'warned' } as const, [])
+const othersAtom = atom({ plugin: 'linear-workflow', key: 'others' } as const, [])
+const conflictsWarnedAtom = atom({ plugin: 'linear-workflow', key: 'conflictsWarned' } as const, [])
 
 type Repo = { root: string; sites: { key: string; path: string }[] }
 
@@ -290,7 +290,7 @@ export const register: Register = (on, options) => {
     apiKey = await loadKey($)
     teamKeys = await loadTeamKeys($)
     const home = await $.env.get('HOME')
-    registryDir = home ? `${home}/.claude/linear-issue-mod/sessions` : null
+    registryDir = home ? `${home}/.claude/linear-workflow/sessions` : null
     await refresh($, true)
     if (await read($, sourceAtom)) void $.ui.open({ id: PANE, title: 'Linear' })
     return started

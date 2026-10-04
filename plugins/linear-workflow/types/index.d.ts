@@ -35,7 +35,7 @@ export type SessionEntry = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'linear-issue-mod': {
+    'linear-workflow': {
       issue: Issue | null
       source: IssueSource | null
       error: string | null

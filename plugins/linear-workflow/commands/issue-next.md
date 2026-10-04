@@ -2,13 +2,13 @@
 description: Pick the next Linear issue to work on — the active cycle's unblocked issues ranked by priority and milestone urgency, with an offer to start the top one
 ---
 
-# /linear-issue-mod:issue-next — what to work on next
+# /linear-workflow:issue-next — what to work on next
 
-Read-only. A five-second decision, not a planning session. That is `/linear-issue-mod:issue-plan-cycle`.
+Read-only. A five-second decision, not a planning session. That is `/linear-workflow:issue-plan-cycle`.
 
 ## 1. Fetch candidates
 
-Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `linear-issue-mod:linear-manager`:
+Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `linear-workflow:linear-manager`:
 
 > Find the current cycle for team <team> (`list_cycles` type current). List issues in it assigned
 > to <assignee, default me>, in a Todo or In Progress state, with no open blocker. If an In Progress
@@ -19,8 +19,8 @@ Read `.claude/linear.json` if it exists (`team`, `project`, `assignee`). Spawn `
 > creation date (oldest first). Return at most 10. Never return descriptions. Also return the cycle
 > number and dates.
 
-- No active cycle → stop: `No active cycle. Create one in Linear, or run /linear-issue-mod:issue-plan-cycle.`
-- No candidates → stop: `Nothing unblocked in the cycle. Run /linear-issue-mod:issue-plan-cycle to add work.`
+- No active cycle → stop: `No active cycle. Create one in Linear, or run /linear-workflow:issue-plan-cycle.`
+- No candidates → stop: `Nothing unblocked in the cycle. Run /linear-workflow:issue-plan-cycle to add work.`
 
 ## 2. Show the top 5
 
@@ -37,5 +37,5 @@ ABC-140  High · no due          <title>   [epic: ABC-100 <title>]
 
 ## 3. Offer to start
 
-`Start ABC-123? [Y/n/<other id>]`. On `Y` or Enter, run `/linear-issue-mod:issue-start ABC-123`. On another id, start
+`Start ABC-123? [Y/n/<other id>]`. On `Y` or Enter, run `/linear-workflow:issue-start ABC-123`. On another id, start
 that one instead. On `n`, stop. If the user declines all five, offer the next five once, then stop.

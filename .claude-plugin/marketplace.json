@@ -9,9 +9,9 @@
   },
   "plugins": [
     {
-      "name": "linear-issue-mod",
-      "source": "./plugins/linear-issue-mod",
-      "description": "Linear in Claude Code: the current issue above the prompt, other sessions and conflict warnings, and /issue-* commands from start to merged PR",
+      "name": "linear-workflow",
+      "source": "./plugins/linear-workflow",
+      "description": "Linear workflow for Claude Code: /issue-* commands from cycle to merged PR, a linear-manager agent, and a mod showing the current issue and your other sessions",
       "version": "0.1.0"
     }
   ]

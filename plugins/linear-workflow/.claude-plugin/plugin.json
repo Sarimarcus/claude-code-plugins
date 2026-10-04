@@ -1,23 +1,22 @@
 {
-  "name": "linear-issue-mod",
+  "name": "linear-workflow",
   "version": "0.1.0",
-  "description": "Claude Code mod for Linear: the current issue above the prompt, your other sessions and their issues, conflict and scope-drift warnings, plus /issue-start, /issue-review, /issue-ship, /issue-next, /issue-plan-cycle and a linear-manager agent",
+  "description": "Linear workflow for Claude Code: /issue-next, /issue-start, /issue-review, /issue-ship and /issue-plan-cycle, a linear-manager agent, and a mod that shows the current issue above the prompt with your other sessions and conflict warnings",
   "author": {
     "name": "Olivier Depiesse",
     "url": "https://github.com/Sarimarcus"
   },
-  "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/linear-issue-mod",
+  "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/linear-workflow",
   "repository": "https://github.com/Sarimarcus/claude-code-plugins",
   "license": "MIT",
   "keywords": [
     "linear",
-    "issue",
-    "git",
-    "branch",
-    "pull-request",
     "workflow",
-    "sessions",
-    "mod"
+    "issue",
+    "pull-request",
+    "git",
+    "mod",
+    "agent"
   ],
   "types": "./types/index.d.ts",
   "userConfig": {
@@ -59,7 +58,7 @@
     "showOtherSessions": {
       "type": "boolean",
       "title": "Show other sessions",
-      "description": "Share this session's issue with your other local Claude Code sessions (via ~/.claude/linear-issue-mod/sessions) and list theirs in the band.",
+      "description": "Share this session's issue with your other local Claude Code sessions (via ~/.claude/linear-workflow/sessions) and list theirs in the band.",
       "default": true,
       "required": false
     }

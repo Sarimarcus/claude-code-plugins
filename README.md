@@ -16,7 +16,7 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 
 | Plugin | Kind | What it does |
 | --- | --- | --- |
-| [linear-issue-mod](plugins/linear-issue-mod) | mod + commands + agent | Linear in Claude Code: the current issue above the prompt, your other sessions and conflict warnings, and `/issue-*` commands from start to merged PR |
+| [linear-workflow](plugins/linear-workflow) | commands + agent + mod | Linear workflow: `/issue-*` commands from cycle to merged PR, a `linear-manager` agent, and a mod showing the current issue, your other sessions and conflict warnings |
 
 ## Layout
 

@@ -1,14 +1,29 @@
-# linear-issue-mod — a Claude Code mod
+# linear-workflow
 
-A Claude Code mod (a plugin of live hooks that draws its own UI) that shows the Linear issue
-you're working on right above the prompt, so the issue for
-the session is always in view.
+A Linear workflow for Claude Code. It has three parts:
+
+- **Commands**: `/issue-next`, `/issue-start`, `/issue-review`, `/issue-ship` and
+  `/issue-plan-cycle` take an issue from the cycle to a merged PR, with Linear kept up to date.
+- **Agent**: `linear-manager` does every Linear read and write, so issue payloads stay out of your
+  main conversation.
+- **Mod**: live code in `hooks/` that shows the current issue above the prompt, lists your other
+  sessions, and warns about conflicts and scope drift.
+
+The workflow, from picking the issue to the merged PR:
+
+```
+/linear-workflow:issue-next → /linear-workflow:issue-start ENG-123 → (work) → /linear-workflow:issue-review → /linear-workflow:issue-ship
+```
+
+The mod's band:
 
 ```
 ◆ ENG-2919 In Progress · High · Core affiliate link builders
 root branch · scope: web · parent ENG-2900          Details  Hide
 also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
 ```
+
+What the mod does:
 
 - **Band above the prompt**: issue id, state, priority, title, scope and parent issue.
 - **Details pane** (`/linear`): description, sub-issues, links, latest comments, and an
@@ -27,19 +42,11 @@ also: ENG-2748 In Review (eng-2748) · ⚠ ENG-2912 In Progress (main)
   sub-project key define the issue's scope. Editing files outside that scope raises a toast.
 - A toast when the issue changes state in Linear.
 
-It also includes an issue workflow, from picking the issue to the merged PR:
-
-```
-/linear-issue-mod:issue-next → /linear-issue-mod:issue-start ENG-123 → (work) → /linear-issue-mod:issue-review → /linear-issue-mod:issue-ship
-```
-
-The workflow uses a `linear-manager` subagent (`linear-issue-mod:linear-manager`), so issue payloads stay out of your main conversation.
-
 ## Install
 
 ```
 /plugin marketplace add Sarimarcus/claude-code-plugins
-/plugin install linear-issue-mod@sarimarcus
+/plugin install linear-workflow@sarimarcus
 ```
 
 Requires a Claude Code version with mods (plugin hooks modules in `hooks/hooks.json` → `modules`).
@@ -50,7 +57,7 @@ commands and `linear-manager` need two more things:
 
 - **Linear MCP server**: the Linear connector on claude.ai, or
   `claude mcp add --transport http linear https://mcp.linear.app/mcp`
-- **GitHub CLI** (`gh`), logged in, for `/linear-issue-mod:issue-review` and `/linear-issue-mod:issue-ship`
+- **GitHub CLI** (`gh`), logged in, for `/linear-workflow:issue-review` and `/linear-workflow:issue-ship`
 
 Provide a Linear personal API key (Linear → Settings → Security & access) in one of
 three ways, checked in this order:
@@ -65,18 +72,18 @@ three ways, checked in this order:
 
 | Command | What it does |
 | --- | --- |
-| `/linear-issue-mod:issue-next` | Ranks the active cycle's unblocked issues (priority, then milestone date, then age) and offers to start the top one |
-| `/linear-issue-mod:issue-start ENG-123` | Moves the issue to In Progress, shows its context and comments, creates Linear's branch for it, and starts work |
-| `/linear-issue-mod:issue-review [ENG-123]` | Runs your checks, commits, pushes the branch, opens a PR with `Closes ENG-123`, and moves the issue to In Review |
-| `/linear-issue-mod:issue-ship [ENG-123]` | Checks the PR (not a draft, no conflicts, checks green), merges it, verifies the merge, and moves the issue to Done |
-| `/linear-issue-mod:issue-plan-cycle` | Lists unscheduled, unblocked backlog issues; you choose which to add to the active cycle |
+| `/linear-workflow:issue-next` | Ranks the active cycle's unblocked issues (priority, then milestone date, then age) and offers to start the top one |
+| `/linear-workflow:issue-start ENG-123` | Moves the issue to In Progress, shows its context and comments, creates Linear's branch for it, and starts work |
+| `/linear-workflow:issue-review [ENG-123]` | Runs your checks, commits, pushes the branch, opens a PR with `Closes ENG-123`, and moves the issue to In Review |
+| `/linear-workflow:issue-ship [ENG-123]` | Checks the PR (not a draft, no conflicts, checks green), merges it, verifies the merge, and moves the issue to Done |
+| `/linear-workflow:issue-plan-cycle` | Lists unscheduled, unblocked backlog issues; you choose which to add to the active cycle |
 
-Without an id, `/linear-issue-mod:issue-review` and `/linear-issue-mod:issue-ship` use the session's issue, then the branch name.
-Running `/linear-issue-mod:issue-review` or `/linear-issue-mod:issue-ship` yourself authorizes the push or merge for that one issue.
+Without an id, `/linear-workflow:issue-review` and `/linear-workflow:issue-ship` use the session's issue, then the branch name.
+Running `/linear-workflow:issue-review` or `/linear-workflow:issue-ship` yourself authorizes the push or merge for that one issue.
 Nothing ever force-pushes or pushes the base branch directly.
 
-Claude Code namespaces plugin commands and agents, so they appear as `/linear-issue-mod:issue-start`
-(type `/issue` and pick it from the menu) and the agent as `linear-issue-mod:linear-manager`.
+Claude Code namespaces plugin commands and agents, so they appear as `/linear-workflow:issue-start`
+(type `/issue` and pick it from the menu) and the agent as `linear-workflow:linear-manager`.
 They don't conflict with commands or agents of the same name in your project.
 
 ### Band and pane
@@ -91,7 +98,7 @@ They don't conflict with commands or agents of the same name in your project.
 
 ## Options
 
-Set from the `/config` menu or under `pluginConfigs.linear-issue-mod` in settings.
+Set from the `/config` menu or under `pluginConfigs.linear-workflow` in settings.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -141,7 +148,7 @@ An issue with no matching label is scoped to everything.
 
 ## How the session list works
 
-Each session writes a small JSON file to `~/.claude/linear-issue-mod/sessions/<session-id>.json` every
+Each session writes a small JSON file to `~/.claude/linear-workflow/sessions/<session-id>.json` every
 minute. The file holds the session's checkout path, issue id, title and state, nothing else. A
 session drops off the list 3 minutes after its last update. Its file is deleted when the session
 ends, and files left by a crash are cleaned up after a day. Everything stays on your machine. The
