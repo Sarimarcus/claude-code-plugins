@@ -12,7 +12,7 @@
       "name": "linear-workflow",
       "source": "./plugins/linear-workflow",
       "description": "Linear workflow for Claude Code: /issue-* commands from cycle to merged PR, a linear-manager agent, and a mod showing the current issue and your other sessions",
-      "version": "0.1.2"
+      "version": "0.1.3"
     }
   ]
 }

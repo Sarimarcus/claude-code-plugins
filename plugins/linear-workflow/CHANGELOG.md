@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 — 2026-10-05
+
+- The band and pane pin the issue when Claude starts it through the Skill tool ("start ABC-123"),
+  not only when `/issue-start ABC-123` is typed
+- The band and pane no longer keep showing a finished issue as `held` after another session started a
+  new one on the shared branch: a held issue that is Done or Canceled is released
+
 ## 0.1.2 — 2026-10-05
 
 - `issue-review` and `issue-ship` can be invoked by Claude itself, not only typed as slash commands

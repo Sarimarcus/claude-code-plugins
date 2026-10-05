@@ -177,7 +177,7 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 - **Band above the prompt**: the current issue's id, state, priority, title, scope and parent.
 - **Details pane** (`/linear`): description, sub-issues, links, latest comments, and *Open in Linear*.
 - **Only your own issue**: a session shows an issue it took on: one you pinned (`/linear ENG-123`,
-  or typing `/linear-workflow:issue-start ENG-123`), or the issue in a branch name
+  typing `/linear-workflow:issue-start ENG-123`, or Claude starting it from your words), or the issue in a branch name
   (`alex/eng-2919-link-builders` → `ENG-2919`) that this session switched to itself. A branch issue
   that another live session in the same checkout has claimed is left to that session, and yours shows
   `No Linear issue found` and the `sessions` row. A lone session opened on a feature branch still
@@ -187,7 +187,7 @@ rolls up only when no sibling is unfinished, and anything not done or canceled c
 - **Conflict warnings**: a toast and a red ⚠ when another session in the *same checkout* is on a
   *different* issue (you share one branch and one working tree), or two sessions are on the same issue.
 - **Your issue stays put.** If another session switches the shared checkout to another branch, your
-  session keeps its issue (`held`). It follows the branch again only after your own session switches branches.
+  session keeps its issue (`held`) until that issue is Done or Canceled, or your own session switches branches.
 - **Scope drift** (optional): with a sub-project registry, an edit outside the issue's labelled
   sub-projects raises a toast.
 - **Stays current**: the issue is fetched again at the end of any turn that wrote to Linear (a
@@ -349,7 +349,7 @@ then restart the session.
 **`gh` errors in `issue-review` or `issue-ship`.** Run `gh auth status`. If the repository doesn't
 allow your `mergeMethod`, `issue-ship` asks which one to use.
 
-**The band shows `held`.** Another session moved the shared branch, and yours kept its issue.
+**The band shows `held`.** Another session moved the shared branch, and yours kept its issue (until it is Done or Canceled).
 `/linear clear` follows the branch again.
 
 ## Limitations

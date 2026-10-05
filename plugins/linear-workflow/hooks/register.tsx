@@ -147,6 +147,15 @@ async function setPin($: EngineInterface, id: string | null, by: 'command' | 'ma
   await update($, pinnedByAtom, () => by)
 }
 
+/** Pin the issue a pin command (`/issue-start ABC-123`) names, however it was invoked: typed or by the Skill tool. */
+async function pinFromSkill($: EngineInterface, name: string, args: string): Promise<void> {
+  if (!config.pinCommand || name.split(':').pop() !== config.pinCommand) return
+  const id = normalizeId(args, teamKeys.length === 1 ? teamKeys[0] : undefined) ?? idFromText(args)
+  if (!id) return
+  await setPin($, id, 'command')
+  await refresh($, true)
+}
+
 function refresh($: EngineInterface, force: boolean): Promise<void> {
   inflight = inflight.then(() => refreshNow($, force)).then(() => syncSessions($)).catch(() => undefined)
   return inflight
@@ -227,6 +236,13 @@ async function refreshNow($: EngineInterface, force: boolean): Promise<void> {
   }
   if (current?.identifier === got.identifier && current.state !== got.state) {
     $.ui.toast(`${got.identifier} moved to ${got.state}`)
+  }
+  // A held issue that is finished has nothing left to hold on to: let go and follow the branch rules again.
+  if (source.from === 'pinned' && (await read($, pinnedByAtom)) === 'held' && (got.stateType === 'completed' || got.stateType === 'canceled')) {
+    await setPin($, null, null)
+    await update($, claimedBranchAtom, () => null)
+    await update($, issueAtom, () => null)
+    return refreshNow($, force)
   }
   await update($, errorAtom, () => null)
   await update($, issueAtom, () => got)
@@ -339,15 +355,7 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', async ($, e, next) => {
-    const name = String(e.command).split(':').pop()
-    const id =
-      config.pinCommand && name === config.pinCommand
-        ? (normalizeId(e.args, teamKeys.length === 1 ? teamKeys[0] : undefined) ?? idFromText(e.args))
-        : undefined
-    if (id) {
-      await setPin($, id, 'command')
-      await refresh($, true)
-    }
+    await pinFromSkill($, String(e.command), e.args)
     return next(e)
   })
 
@@ -377,6 +385,10 @@ export const register: Register = (on, options) => {
   on('tool.call', async ($, e, next) => {
     const tool = String(e.tool)
     if (touchesLinear(tool, e as unknown as { command?: unknown; subagent_type?: unknown })) linearTouched = true
+    if (tool === 'Skill') {
+      const input = e as unknown as { skill?: unknown; args?: unknown }
+      await pinFromSkill($, String(input.skill ?? ''), String(input.args ?? ''))
+    }
     if (repo && (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit' || tool === 'NotebookEdit')) {
       const input = e as unknown as { file_path?: string; notebook_path?: string }
       const path = input.file_path ?? input.notebook_path ?? ''
