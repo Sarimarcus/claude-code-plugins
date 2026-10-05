@@ -2,14 +2,14 @@
 name: issue-ship
 description: Ship a Linear issue — check its PR can land, merge it, verify the merge on GitHub, and close the issue
 argument-hint: "[<ABC-123>]"
-disable-model-invocation: true
 ---
 
 # issue-ship — merge the PR and close the issue
 
 Lands the PR that `issue-review` opened. Typing `/linear-workflow:issue-ship <ABC-123>` yourself
 authorizes merging **that issue's PR**. That authorization does not extend to anything else. If the
-id was resolved rather than typed, confirm it once before merging.
+id was resolved rather than typed, or if you invoked this skill yourself without the user asking to
+ship, confirm the issue and PR with the user once before merging.
 
 Every CLI call below is written out in full. A shell variable set in one Bash call does not exist in the next.
 

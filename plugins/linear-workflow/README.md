@@ -298,9 +298,10 @@ label is scoped to everything.
 
 ## Safety
 
-- `issue-review`, `issue-ship` and `issue-plan-cycle` can't be started by Claude on its own. You
-  have to type them.
-- Typing one authorizes the push or merge for **that issue only**.
+- `issue-plan-cycle` can't be started by Claude on its own. You have to type it. `issue-review` and
+  `issue-ship` can also be invoked by Claude. When Claude does that without you asking to ship,
+  `issue-ship` confirms the issue and PR with you before merging.
+- Typing `issue-review` or `issue-ship` yourself authorizes the push or merge for **that issue only**.
 - The skills never run `git push --force`, `git reset --hard`, `git clean`, `git checkout -- .`,
   `git restore .`, a bare `git stash` or `git commit --amend`: each can destroy work that isn't
   yours. Every eval checks this. The only push to the base branch is the merge itself, when
@@ -380,7 +381,8 @@ npm run eval               # skill evals, then writes evals/RESULTS.md
 ```
 
 **Evals** (`evals/`) check the skills' guardrails: `issue-ship` stops on a missing, draft or failing PR
-and asks when several PRs or running checks are involved; `issue-review` refuses on the base branch
+asks when several PRs or running checks are involved, and doesn't merge on its own when Claude reaches it
+without being asked to ship; `issue-review` refuses on the base branch
 or another issue's branch, flags unmet acceptance criteria and never stages unrelated files;
 no skill ever runs a destructive git command; `issue-start` never stashes or discards a dirty tree, quotes
 actionable comments verbatim and hides acceptance criteria; `issue-next` keeps the CLI's order and
