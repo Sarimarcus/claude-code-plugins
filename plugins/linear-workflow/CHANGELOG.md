@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-10-05
+
+- `issue-review` and `issue-ship` can be invoked by Claude itself, not only typed as slash commands
+  (`disable-model-invocation` removed). When Claude invokes `issue-ship` without the user asking to
+  ship, it confirms the issue and PR with the user before merging
+
 ## 0.1.1 — 2026-10-04
 
 - Acceptance criteria written under sub-headings, or as prose, are now checked by `issue-review`
