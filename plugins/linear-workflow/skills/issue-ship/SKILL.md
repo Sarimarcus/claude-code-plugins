@@ -58,11 +58,12 @@ Print `Merging <check.pr.url> — ABC-123 <check.pr.title>.`, then use `merge.me
   ```bash
   git fetch origin "<merge.baseBranch>" "<check.pr.headRefName>" && \
   test "$(git rev-parse "origin/<check.pr.headRefName>")" = "<check.pr.headRefOid>" && \
-  git switch "<merge.baseBranch>" && git pull --ff-only && \
+  git switch "<merge.baseBranch>" && git merge --ff-only "origin/<merge.baseBranch>" && \
   git merge --no-ff "origin/<check.pr.headRefName>" -m "Merge: <title> (ABC-123)" && git push
   ```
   If this fails, stop and report it. Never force-push. A diverged base is reported as that, not as
-  a merge conflict.
+  a merge conflict. Update the base with `git merge --ff-only`, never `git pull`: a repo set to
+  `pull.rebase` refuses any pull while the tree has uncommitted files, even with `--ff-only`.
 
 ## 3. Verify that it landed
 
@@ -73,7 +74,8 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/linear-workflow.mjs" pr-merged ABC-123 --pr <che
 ```
 
 Exit 0 (`landed: true`, with `mergeCommit`) → continue. Exit 2 → stop before touching Linear, and
-report `state`. Then update the local checkout: `git switch <base> && git pull --ff-only`.
+report `state`. Then update the local checkout:
+`git switch <base> && git fetch origin <base> && git merge --ff-only origin/<base>`.
 
 ## 4. Linear
 
