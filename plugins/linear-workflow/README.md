@@ -306,6 +306,9 @@ label is scoped to everything.
   `git restore .`, a bare `git stash` or `git commit --amend`: each can destroy work that isn't
   yours. Every eval checks this. The only push to the base branch is the merge itself, when
   `issue-ship` uses `mergeMethod: local`.
+- `issue-ship` updates the base branch with `git fetch` + `git merge --ff-only`, never `git pull`:
+  in a repo set to `pull.rebase`, a pull refuses whenever any file is uncommitted, including files
+  another session left in a shared checkout.
 - `issue-review` refuses on a branch that names another issue, so work never lands under the wrong
   issue.
 - `issue-ship` checks GitHub before writing to Linear, so a merge that failed is never reported as done.

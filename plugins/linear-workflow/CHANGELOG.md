@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `issue-ship` updates the base branch with `git fetch` + `git merge --ff-only` instead of
+  `git pull --ff-only`, so a local merge or the post-merge checkout update no longer fails in a repo
+  set to `pull.rebase` while unrelated files are uncommitted
+
 ## 0.1.3 — 2026-10-05
 
 - The band and pane pin the issue when Claude starts it through the Skill tool ("start ABC-123"),
