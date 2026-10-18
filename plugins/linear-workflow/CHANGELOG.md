@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4 — 2026-10-18
 
 - `issue-ship` updates the base branch with `git fetch` + `git merge --ff-only` instead of
   `git pull --ff-only`, so a local merge or the post-merge checkout update no longer fails in a repo
