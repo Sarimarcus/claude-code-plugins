@@ -1,0 +1,49 @@
+{
+  "insights": {
+    "LCPDiscovery": { "class": "fix", "fix": "lcp-fetchpriority" },
+    "CLSCulprits": { "class": "fix", "fix": "cls-culprit", "cls": true },
+    "RenderBlocking": { "class": "fix", "fix": "defer-or-async" },
+    "ImageDelivery": { "class": "flag", "flag": "image-assets" },
+    "ThirdParties": { "class": "flag", "flag": "third-party-script" },
+    "FontDisplay": { "class": "flag", "flag": "font-loading" },
+    "DOMSize": { "class": "flag", "flag": "architecture" },
+    "NetworkDependencyTree": { "class": "flag", "flag": "architecture" },
+    "DuplicatedJavaScript": { "class": "flag", "flag": "architecture" },
+    "LegacyJavaScript": { "class": "flag", "flag": "architecture" },
+    "ForcedReflow": { "class": "flag", "flag": "architecture" },
+    "SlowCSSSelector": { "class": "flag", "flag": "architecture" },
+    "Cache": { "class": "info" },
+    "DocumentLatency": { "class": "info" },
+    "ModernHTTP": { "class": "info" },
+    "CharacterSet": { "class": "info" },
+    "Viewport": { "class": "info" },
+    "INPBreakdown": { "class": "info" },
+    "LCPBreakdown": { "class": "info" }
+  },
+  "lcpSubpart": {
+    "loadDelay": { "class": "fix", "fix": "lcp-fetchpriority" },
+    "loadDuration": { "class": "flag", "flag": "image-assets" },
+    "renderDelay": { "class": "info" }
+  },
+  "vetoes": [
+    {
+      "insight": "RenderBlocking",
+      "when": "allUrlsMatch",
+      "pattern": "/(_astro|_next/static|assets)/[^/]+\\.css($|\\?)",
+      "becomes": { "class": "flag", "flag": "architecture" },
+      "reason": "framework-bundled stylesheet is the page's critical CSS; deferring it flashes unstyled content"
+    },
+    {
+      "insight": "RenderBlocking",
+      "when": "allThirdParty",
+      "becomes": { "class": "flag", "flag": "third-party-script" },
+      "reason": "every blocking request is third-party; removing or deferring it is a business call"
+    },
+    {
+      "insight": "*",
+      "when": "allThirdParty",
+      "becomes": { "class": "flag", "flag": "third-party-script" },
+      "reason": "every offending request is third-party"
+    }
+  ]
+}

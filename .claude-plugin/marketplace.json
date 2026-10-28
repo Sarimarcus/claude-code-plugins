@@ -13,6 +13,12 @@
       "source": "./plugins/linear-workflow",
       "description": "Linear workflow for Claude Code: /issue-* commands from cycle to merged PR, a linear-manager agent, and a mod showing the current issue and your other sessions",
       "version": "0.1.4"
+    },
+    {
+      "name": "cwv-optimizer",
+      "source": "./plugins/cwv-optimizer",
+      "description": "Core Web Vitals for static sites: real mobile and desktop traces through the chrome-devtools CLI, a colored report with fixes ranked by gain, and an agent that applies them behind a keep-or-revert gate",
+      "version": "0.1.0"
     }
   ]
 }

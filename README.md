@@ -17,6 +17,7 @@ Then install any plugin with `/plugin install <name>@sarimarcus`.
 | Plugin | Kind | What it does |
 | --- | --- | --- |
 | [linear-workflow](plugins/linear-workflow) | skills + CLI + agent + mod | [Linear](https://linear.app) workflow: `issue-*` skills from cycle to merged PR, backed by a deterministic CLI, a `linear-manager` agent, and a mod showing the current issue, your other sessions and conflict warnings |
+| [cwv-optimizer](plugins/cwv-optimizer) | skill + agent + CLI | Core Web Vitals for static sites: real mobile/desktop traces through the `chrome-devtools` CLI, a colored report with fixes ranked by gain, and an agent that applies them behind a keep-or-revert gate |
 
 ## Layout
 
