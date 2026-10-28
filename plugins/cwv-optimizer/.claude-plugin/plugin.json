@@ -1,0 +1,21 @@
+{
+  "name": "cwv-optimizer",
+  "displayName": "CWV Optimizer",
+  "version": "0.1.0",
+  "description": "Measure Core Web Vitals of a static site with real mobile throttling through the chrome-devtools CLI, print a colored report with fixes ranked by gain, and optionally apply them with an agent behind a keep-or-revert gate",
+  "author": {
+    "name": "Olivier Depiesse",
+    "url": "https://github.com/Sarimarcus"
+  },
+  "homepage": "https://github.com/Sarimarcus/claude-code-plugins/tree/main/plugins/cwv-optimizer",
+  "repository": "https://github.com/Sarimarcus/claude-code-plugins",
+  "license": "MIT",
+  "keywords": [
+    "core-web-vitals",
+    "lcp",
+    "cls",
+    "performance",
+    "chrome-devtools",
+    "agent"
+  ]
+}

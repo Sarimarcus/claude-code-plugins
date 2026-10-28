@@ -12,7 +12,9 @@
     "eval": "cd plugins/linear-workflow && rm -rf evals/results/latest; claude plugin eval . -j 4 --ablation none --allow-tools Bash --scaffold --trust-plugin --no-publish --output-dir evals/results/latest; node evals/report.mjs evals/results/latest/aggregate-result.json",
     "eval:report": "node plugins/linear-workflow/evals/report.mjs",
     "release": "node scripts/release.mjs",
-    "release:check": "node scripts/release-check.mjs"
+    "release:check": "node scripts/release-check.mjs",
+    "eval:cwv": "cd plugins/cwv-optimizer && claude plugin eval . --ablation none --allow-tools Bash --scaffold --trust-plugin --no-publish --output-dir /tmp/cwv-eval-out; rm -rf /tmp/cwv-eval-out",
+    "test:cwv": "node --test plugins/cwv-optimizer/tests/cwv.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -1,0 +1,56 @@
+{
+  "thresholds": {
+    "lcpMaxMs": 2500,
+    "clsMax": 0.01,
+    "keepMinGainMs": 150,
+    "keepMinClsGain": 0.005,
+    "atRiskMargin": 0.2
+  },
+  "defaultProfile": "mobile",
+  "profiles": {
+    "mobile": {
+      "cpuThrottlingRate": 4,
+      "networkConditions": "Slow 4G",
+      "viewport": "412x823x2.625,mobile,touch"
+    },
+    "desktop": {
+      "cpuThrottlingRate": 1,
+      "networkConditions": "Fast 4G",
+      "viewport": "1350x940"
+    }
+  },
+  "traces": {
+    "initial": 1,
+    "confirm": 3
+  },
+  "build": {
+    "command": "npm run build",
+    "distDir": null
+  },
+  "pages": {
+    "maxPages": 40,
+    "include": []
+  },
+  "fix": {
+    "maxConsecutiveReverts": 2,
+    "maxFixes": null
+  },
+  "reportDir": "docs/cwv",
+  "runsDir": ".cwv-runs",
+  "recipes": [],
+  "classification": null,
+  "protectedGlobs": [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "out/**",
+    ".astro/**",
+    ".next/**",
+    "package.json",
+    "package-lock.json",
+    "astro.config.*",
+    "vite.config.*",
+    "next.config.*",
+    "tsconfig*.json"
+  ]
+}
