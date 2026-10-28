@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 — 2026-10-28
 
 - First version: `/cwv-optimizer:cwv-optimize` measures LCP and CLS under real mobile (4× CPU, Slow 4G) or desktop throttling
   through the pinned `chrome-devtools` CLI, prints a colored report with ranked fixes, and with `--fix` has the
